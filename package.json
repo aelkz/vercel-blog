@@ -1,11 +1,11 @@
 {
-  "name": "digital-garden",
+  "name": "coffee-hack",
   "version": "0.7.2",
   "private": true,
-  "repository": "https://github.com/thedevdavid/digital-garden",
+  "repository": "https://github.com/aelkz/vercel-blog",
   "author": {
-    "name": "David Levai",
-    "url": "https://twitter.com/thedevdavid"
+    "name": "Raphael Abreu",
+    "url": "https://stackoverflow.com/users/2730735/aelkz?tab=profile"
   },
   "scripts": {
     "dev": "next dev",
