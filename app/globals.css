@@ -1,6 +1,31 @@
 @tailwind base;
 @tailwind components;
 
+/* Custom Fonts */
+@font-face {
+  font-family: 'Quantico';
+  src: url('/fonts/quantico.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Voltaire';
+  src: url('/fonts/voltaire.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Quicksand';
+  src: url('/fonts/quicksand.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 .footnotes {
   @apply mb-6 border-t border-muted-foreground pt-2 text-sm text-muted-foreground;
 }
@@ -36,25 +61,26 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 223 94% 66%;
+    /* Coffee-themed colors */
+    --background: 50 15% 90%; /* E6E5DF - light beige background */
+    --foreground: 33 63% 25%; /* Darker version of A97125 for text */
+    --muted: 33 30% 76%; /* D2C0AA - light beige for muted backgrounds */
+    --muted-foreground: 33 63% 40%; /* A97125 - dark brown for muted text */
+    --popover: 50 15% 90%; /* E6E5DF - matches background */
+    --popover-foreground: 33 63% 25%; /* Dark brown text */
+    --card: 33 30% 76%; /* D2C0AA - light beige cards */
+    --card-foreground: 33 63% 25%; /* Dark brown text on cards */
+    --border: 42 49% 56%; /* CA9F55 - medium brown borders */
+    --input: 33 30% 76%; /* D2C0AA - light beige inputs */
+    --primary: 33 63% 40%; /* A97125 - dark brown primary */
+    --primary-foreground: 50 15% 90%; /* E6E5DF - light text on primary */
+    --secondary: 39 51% 49%; /* BD8B3D - medium-dark brown */
+    --secondary-foreground: 50 15% 90%; /* Light text on secondary */
+    --accent: 42 49% 56%; /* CA9F55 - medium brown accent */
+    --accent-foreground: 33 63% 25%; /* Dark brown text on accent */
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 85.7% 97.3%;
-    --ring: 217.2 32.6% 17.5%;
+    --destructive-foreground: 50 15% 90%;
+    --ring: 33 63% 40%; /* A97125 - dark brown focus ring */
   }
 }
 
@@ -64,8 +90,29 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Voltaire', sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Quantico', sans-serif;
   }
   .anchor-heading-link {
     @apply duration-150 before:-ml-5 before:italic before:opacity-0 before:transition-opacity before:content-['#_'] hover:before:opacity-100;
+  }
+
+  /* Override prose text colors to use coffee theme */
+  .prose {
+    color: hsl(33, 63%, 25%) !important;
+  }
+
+  .dark .prose {
+    color: hsl(33, 63%, 25%) !important;
+  }
+
+  .prose strong {
+    color: hsl(33, 63%, 25%) !important;
+  }
+
+  .dark .prose strong {
+    color: hsl(33, 63%, 25%) !important;
   }
 }

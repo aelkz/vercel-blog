@@ -26,7 +26,7 @@ async function getPostFromParams(params: PostProps["params"]): Promise<any> {
   const post = allPosts.find((post) => post.slug === params.slug);
 
   if (!post) {
-    null;
+    return null;
   }
 
   if (post?.series) {
@@ -66,14 +66,14 @@ export async function generateMetadata({ params }: PostProps): Promise<Metadata>
 
 export async function generateStaticParams(): Promise<PostProps["params"][]> {
   return allPosts.map((post) => ({
-    slug: `/posts/${post._raw.flattenedPath}`,
+    slug: post.slug,
   }));
 }
 
 export default async function PostPage({ params }: PostProps) {
   const post = await getPostFromParams(params);
 
-  if (!post || (process.env.NODE_ENV === "development" && post.status !== "published")) {
+  if (!post || (process.env.NODE_ENV !== "development" && post.status !== "published")) {
     notFound();
   }
 

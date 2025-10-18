@@ -16,10 +16,10 @@ const PostPreview = ({ post }: PostPreviewProps) => {
       <Link
         href={`/posts/${post.slug}`}
         className={cn(
-          "select-rounded-md block w-full rounded-md p-4 leading-none no-underline outline-none transition-colors hover:bg-foreground/10 hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+          "select-rounded-md block w-full rounded-md px-4 py-2 leading-none no-underline outline-none transition-colors hover:bg-foreground/10 hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
         )}
       >
-        <h3 className="my-2 text-2xl font-bold text-foreground">{post.title}</h3>
+        <h3 className="my-1 text-2xl font-bold text-foreground">{post.title}</h3>
         <div className="flex gap-2 text-sm leading-snug text-muted-foreground">
           <div className="flex items-center gap-1">
             <CalendarDays size={16} />
@@ -32,7 +32,7 @@ const PostPreview = ({ post }: PostPreviewProps) => {
           </div>
         </div>
         {post?.tags && (
-          <ul className="my-4 flex list-none flex-wrap gap-2 p-0">
+          <ul className="my-2 flex list-none flex-wrap gap-2 p-0">
             {post.tags.map((tag: string) => (
               <li key={tag}>
                 <Badge

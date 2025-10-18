@@ -70,23 +70,26 @@ export function Navigation() {
         )}
         <div className="flex items-center gap-2 rounded-full border-b border-foreground/25 bg-background/95 px-3 py-2 shadow-md supports-[backdrop-filter]:bg-background/60 supports-[backdrop-filter]:bg-clip-padding supports-[backdrop-filter]:backdrop-blur sm:justify-between sm:rounded-none sm:px-3">
           <div className="container mx-auto flex max-w-6xl">
-            <div className="flex items-center justify-start">
-              <div className="group aspect-square h-auto w-10 overflow-hidden rounded-full border border-black">
+            <div className="flex items-center justify-start gap-3">
+              <div className="group aspect-square h-auto w-10 overflow-hidden rounded-full">
                 <Link href="/" aria-label="Go to Home">
                   <Image
                     className="duration-300 group-hover:scale-110"
                     width={40}
                     height={40}
                     src="/avatar.png"
-                    alt={defaultAuthor.name}
+                    alt="Blog Logo"
                   />
                 </Link>
               </div>
-              {defaultAuthor.availableForWork && (
-                <Link href="/now" aria-label="Go to Now page" className="ml-2 hidden sm:block">
-                  <WorkAvailabilityBadge />
-                </Link>
-              )}
+              <Link href="/" aria-label="Go to Home" className="flex max-w-2xl flex-col">
+                <span className="font-heading text-lg font-bold leading-tight text-[#7A5419]">
+                  {defaultAuthor.siteName}
+                </span>
+                <span className="whitespace-nowrap text-xs">
+                  <span className="font-semibold text-foreground/60">{defaultAuthor.jobTitle}</span>
+                </span>
+              </Link>
             </div>
             <div className="order-3 sm:order-2 sm:ml-auto">
               <nav className="ml-auto hidden space-x-6 text-sm font-medium sm:block sm:w-full">

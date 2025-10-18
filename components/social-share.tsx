@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SocialProfile } from "@/types";
-import { Mail } from "lucide-react";
-import { siFacebook, siLinkedin, siTwitter, siYcombinator } from "simple-icons";
+import { Linkedin, Mail } from "lucide-react";
+import { siFacebook, siYcombinator } from "simple-icons";
 
 import { Button, ButtonProps } from "@/components/ui/button";
 import {
@@ -29,24 +29,6 @@ export const SocialShare = ({ url, text }: SocialShareProps) => {
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link
-            href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${text}`}
-            rel="noreferrer noopener"
-            target="_blank"
-          >
-            <svg
-              role="img"
-              viewBox="0 0 24 24"
-              className="mr-2 h-3 w-3"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d={siTwitter.path}></path>
-            </svg>
-            Twitter
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link
             href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
             rel="noreferrer noopener"
             target="_blank"
@@ -69,15 +51,7 @@ export const SocialShare = ({ url, text }: SocialShareProps) => {
             rel="noreferrer noopener"
             target="_blank"
           >
-            <svg
-              role="img"
-              viewBox="0 0 24 24"
-              className="mr-2 h-3 w-3"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d={siLinkedin.path}></path>
-            </svg>
+            <Linkedin className="mr-2 h-3 w-3" />
             LinkedIn
           </Link>
         </DropdownMenuItem>

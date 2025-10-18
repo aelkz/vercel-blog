@@ -58,9 +58,4 @@ export default makeSource({
       ],
     ],
   },
-  onSuccess: async (data) => {
-    // write the data to a file, so we can use it in search
-    const { allDocuments } = await data();
-    console.log("allDocuments", allDocuments.length);
-  },
 });

@@ -14,8 +14,9 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ["var(--font-inter)", ...fontFamily.sans],
-        heading: ["var(--font-space)", ...fontFamily.sans],
+        sans: ["Voltaire", ...fontFamily.sans],
+        heading: ["Quantico", ...fontFamily.sans],
+        quicksand: ["Quicksand", ...fontFamily.sans],
       },
       colors: {
         border: "hsl(var(--border))",

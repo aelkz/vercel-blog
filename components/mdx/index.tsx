@@ -1,8 +1,6 @@
 import NextImage, { ImageProps } from "next/image";
 import Link from "next/link";
 import { useMDXComponent } from "next-contentlayer/hooks";
-import type { TweetProps } from "react-tweet";
-import { Tweet } from "react-tweet";
 
 import { NewsletterCTA } from "./newsletter-cta";
 import { YouTubeVideo } from "./youtube-video";
@@ -25,13 +23,30 @@ const components = {
   NewsletterCTA,
   YouTubeVideo,
   // a: CustomLink,
-  Tweet: (props: TweetProps) => {
-    return (
-      <div className="not-prose [&>div]:mx-auto">
-        <Tweet {...props} />
-      </div>
-    );
-  },
+  h1: ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h1 className={`!text-[#A97125] [&_a]:!text-[#A97125] ${className || ""}`} {...props} />
+  ),
+  h2: ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h2 className={`!text-[#A97125] [&_a]:!text-[#A97125] ${className || ""}`} {...props} />
+  ),
+  h3: ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h3 className={`!text-[#A97125] [&_a]:!text-[#A97125] ${className || ""}`} {...props} />
+  ),
+  h4: ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h4 className={`!text-[#A97125] [&_a]:!text-[#A97125] ${className || ""}`} {...props} />
+  ),
+  h5: ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h5 className={`!text-[#A97125] [&_a]:!text-[#A97125] ${className || ""}`} {...props} />
+  ),
+  h6: ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h6 className={`!text-[#A97125] [&_a]:!text-[#A97125] ${className || ""}`} {...props} />
+  ),
+  img: ({ alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    <span className="my-6 block">
+      <img {...props} alt={alt} className="mx-auto h-auto max-w-full rounded-lg border-2 border-[#CA9F55] shadow-lg" />
+      {alt && <em className="mt-2 block text-center text-sm text-muted-foreground">{alt}</em>}
+    </span>
+  ),
 };
 
 interface MdxProps {

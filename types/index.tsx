@@ -39,13 +39,15 @@ export type SiteMetaData = {
   siteRepo: string;
   newsletterProvider?: NewsletterProvider;
   newsletterUrl?: string;
+  showNewsletter?: boolean;
   analyticsProvider?: AnalyticsProvider;
   defaultTheme: "light" | "dark" | "system";
   activeAnnouncement: boolean;
   announcement: Pick<AnnouncementBarProps, "buttonText" | "link">;
   postsPerPage: number;
   postsOnHomePage: number;
-  projectsOnHomePage: number;
+  booksOnHomePage: number;
+  songsOnHomePage: number;
 };
 
 export type SeriesItem = {
@@ -66,6 +68,7 @@ export type SocialProfile = {
 
 export type AuthorType = {
   name: string;
+  siteName: string;
   handle: string;
   socialProfiles: SocialProfile[];
   email: string;
@@ -75,6 +78,7 @@ export type AuthorType = {
   availableForWork: boolean;
   location: {
     city: string;
+    country: string;
     media: string;
   };
 };

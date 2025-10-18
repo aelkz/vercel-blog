@@ -4,47 +4,28 @@ import siteMetadata, { defaultAuthor } from "@/lib/metadata";
 
 const content: ContentNavItem[] = [
   {
-    title: "Blog",
+    title: "Technology Blog",
     href: "/posts",
-    description: "Blogposts. Mostly about web development. Or chicken fingers",
+    description: "Blogposts. Mostly about software engineering and cloud architecture",
   },
   {
-    title: "Speaking",
-    href: "/speaking",
-    description: "My previous (and current) talks, workshops, and other speaking engagements.",
-  },
-  {
-    title: "Videos",
-    href: defaultAuthor.socialProfiles.find((platform) => platform.name === "youtube")?.link as string,
-    description: "My YouTube channel where I talk about web development.",
-  },
-  {
-    title: "Newsletter",
-    href: siteMetadata.newsletterUrl as string,
-    description: "My newsletter about software development",
-  },
-  {
-    title: "Teaching",
-    href: "/teaching",
-    description: "I teach others. Sometimes for free, sometimes for money.",
+    title: "Guitar recordings",
+    href: "/guitar",
+    description: "A chill space where I post some recordings of me playing guitar.",
   },
 ];
 
 export const navigationLinks: NavItem[] = [
   {
-    title: "Content",
+    title: "Blog",
     content,
   },
   {
-    title: "Projects",
+    title: "Thoughtworks",
     href: "/projects",
   },
   {
-    title: "Uses",
-    href: "/uses",
-  },
-  {
-    title: "Now",
-    href: "/now",
+    title: "About",
+    href: "/about",
   },
 ];

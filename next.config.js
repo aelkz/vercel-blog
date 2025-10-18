@@ -6,6 +6,13 @@ const { withContentlayer } = require("next-contentlayer");
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  transpilePackages: ["next-contentlayer"],
+  webpack: (config) => {
+    config.infrastructureLogging = {
+      level: "error",
+    };
+    return config;
+  },
   rewrites: async () => [
     {
       source: "/posts/test",

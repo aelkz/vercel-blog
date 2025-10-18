@@ -8,22 +8,24 @@ export const BASE_URL =
   `http://localhost:${process.env.PORT || 3000}`;
 
 export const defaultAuthor: AuthorType = {
-  name: "Amy Shields",
-  handle: "@amyshieldsfake",
+  name: "Raphael Abreu",
+  siteName: "Coffeehack.io",
+  handle: "@coffeehack-io",
   socialProfiles,
   email: "definitelyfake@nevermind.com",
-  website: "https://nextjs.org",
-  jobTitle: "Frontend Engineer & UI Designer",
-  company: "Unicorns & Co.",
-  availableForWork: true,
+  website: "https://coffeehack.io",
+  jobTitle: "Dialing the best shot of thinking & design — smooth, sweet, and balanced",
+  company: "Coffee & Guitar Co.",
+  availableForWork: false,
   location: {
-    city: "Los Angeles",
-    media: "/losangeles.jpg",
+    city: "Brasilia",
+    country: "Brazil",
+    media: "/brasilia.png",
   },
 };
 
 const defaultTitle = `${defaultAuthor.name}'s Blog`;
-const defaultDescription = `I'm ${defaultAuthor.name}. Building hackin’ cool digital products around the world 🌴.`;
+const defaultDescription = `I'm ${defaultAuthor.name}. Dialing the best shot of thinking & design — smooth, sweet, and balanced.`;
 
 const siteMetadata: SiteMetaData = {
   title: {
@@ -31,19 +33,21 @@ const siteMetadata: SiteMetaData = {
     default: defaultTitle,
   },
   description: defaultDescription,
-  siteRepo: "https://github.com/thedevdavid/digital-garden",
+  siteRepo: "https://github.com/aelkz/vercel-blog",
   newsletterProvider: "mailerlite",
-  newsletterUrl: "https://developreneur.davidlevai.com",
+  newsletterUrl: "https://",
+  showNewsletter: false,
   analyticsProvider: "umami",
-  defaultTheme: "system",
-  activeAnnouncement: true,
+  defaultTheme: "dark",
+  activeAnnouncement: false,
   announcement: {
-    buttonText: "Support on DevHunt →",
-    link: "https://devhunt.org/tool/modern-developer-blog-template-digital-garden-starter",
+    buttonText: "",
+    link: "",
   },
   postsPerPage: 10,
   postsOnHomePage: 8,
-  projectsOnHomePage: 4,
+  booksOnHomePage: 6,
+  songsOnHomePage: 5,
 };
 
 export default siteMetadata;
