@@ -1,0 +1,122 @@
+---
+title: "How to debloat Microsoft Windows 10"
+publishedDate: "2021-01-19"
+lastUpdatedDate: "2021-01-19"
+tags:
+  - technology
+description: "Guide to remove bloatware and optimize Windows 10 performance using PowerShell scripts and custom cleanup tools."
+status: published
+---
+
+Recently I was forced to format my old notebook to keep things fresh again and remove old software data and invalid registry entries.
+
+I expected to use this new machine for future activities, and I wanted to keep things ready.
+
+Microsoft Windows 10 operating system is known for tons of extras resources, tools, and assistants. It has some time that I was keeping a periodic cycle of cleanup routine on my notebook to remove obsolete components and something that has never been used.
+
+That’s how I’ve ended finding these GitHub projects:
+
+[https://github.com/Sycnex/Windows10Debloater.git](https://github.com/Sycnex/Windows10Debloater.git)
+
+[https://github.com/W4RH4WK/Debloat-Windows-10.git](https://github.com/W4RH4WK/Debloat-Windows-10.git)
+
+These repositories provide a bunch of PowerShell-based scripts to allow the end-user to remove any native component from windows that initially you cannot remove or simply disable it from consuming your resources like cpu and ram. They come with a few scripts to be executed as root (admin) to allow us removing these unwanted applications or bloatware as they are known:
+
+"Bloatware is unwanted software included on a new computer or mobile device by the manufacturer."
+
+and
+
+"Bloatware is a software you don’t want that burdens and slows down your device. These are programs that are preinstalled on new devices, come bundled with other downloads, or are injected into your system through malicious sites."
+
+As we have known, the main reason for writing this article is related to the first sentence of the previous explanation.
+
+Bloatware or unwanted apps is even worse on mobile devices. There are many complaints about the "extra" app that you don’t know why they are there or designed.
+
+With that in mind, indeed, there are a bunch of applications and components that we might not be interested in the use, or we want to achieve maximum performance due to a couple of reasons:
+
+- Optimize system performance at the highest levels due to hardware limitations;
+
+- To allow a lightweight environment for intensive tasks and applications such as working with video editors or software development;
+
+- Reduce usage of hardware due to an execution inside virtual machines or remote workstations.
+
+For example, the project [https://github.com/Sycnex/Windows10Debloater](https://github.com/Sycnex/Windows10Debloater) has a GUI to support those who are new to administrative tasks or to easy and guide the process and assist the process of debloating as they call it.
+
+Just open Windows Powershell with admin privileges and run the ./Windows10DebloaterGUI.ps1 script to get a GUI to assist you:
+
+![](/images/how-to-debloat-microsoft-windows-10/powershell_O9cHfjg57u.png)
+
+It’s a simple interface, but it allows selecting only the actions you might want to execute. You can also choose what to keep or get rid off. At the end of its execution, restart your computer!
+
+It is notable the final result with the reduction of disk size in terms of GBs, as you can fell the lightweight for less usage of cpu and ram.
+
+![](/images/how-to-debloat-microsoft-windows-10/powershell_Ffqpyb77yQ.png)
+
+These custom scripts might be not the best option for ordinary users, or for those who want to navigate and take the best user experience from windows. Applications like the windows calculator might be gone for good!
+
+Remember to do a full system backup of your files and create a restore point to record the previous system metadata and configurations. This simple action can save you at the end of the day and is quite simple to run.
+
+![](/images/how-to-debloat-microsoft-windows-10/chrome_SWyOm6gWS8.png)
+
+And then:
+
+![](/images/how-to-debloat-microsoft-windows-10/SystemPropertiesProtection_fEtfHMLdT1.png)
+
+For those who want to give a step further, there are a lot of other custom scripts that you might want to run, like the [https://github.com/ChrisTitusTech/win10script](https://github.com/ChrisTitusTech/win10script) project:
+
+![](/images/how-to-debloat-microsoft-windows-10/x03.png)
+
+I didn’t analyze this latest script, but in addition to this topic, I’ve also developed a kill-all script to allow a single-point for closing all unwanted background apps. It kills all apps and processes instantaneously to prepare the machine for a task intensive operation, or just to keep things "smoother".
+
+```
+rem task killer (cleanup)
+
+@Echo off
+:start
+cls
+
+if not "%1"=="am_admin" (powershell start -verb runas '%0' am_admin & exit /b)
+
+taskkill /f /im MicrosoftEdge.exe
+taskkill /f /im MicrosoftEdgeCP.exe
+taskkill /f /im MicrosoftEdgeSH.exe
+taskkill /f /im WinStore.App.exe
+taskkill /f /im YourPhone.exe
+taskkill /f /im chrome.exe
+taskkill /f /im ArmouryCrate.UserSessionHelper.exe
+taskkill /f /im ArmouryCrate.Service.exe
+taskkill /f /im ArmourySocketServer.exe
+taskkill /f /im ArmourySwAgent.exe
+taskkill /f /im asus_framework.exe
+taskkill /f /im atkexComSvc.exe
+taskkill /f /im GoogleCrashHandler.exe
+taskkill /f /im GoogleCrashHandler64.exe
+taskkill /f /im APSDaemon.exe
+taskkill /f /im secd.exe
+taskkill /f /im ArmourySocketServer.exe
+taskkill /f /im P508PowerAgent.exe
+taskkill /f /im ArmouryCrate.UserSessionHelper.exe
+taskkill /f /im asus_framework.exe
+taskkill /f /im SearchApp.exe
+taskkill /f /im "NVIDIA Web Helper".exe
+taskkill /f /im ArmourySwAgent.exe
+taskkill /f /im GoogleCrashHandler.exe
+taskkill /f /im GoogleCrashHandler64.exe
+taskkill /f /im AWCC.exe
+taskkill /f /im AWCC.Background.Server.exe
+taskkill /f /im LockApp.exe
+taskkill /f /im PDStyleAgent.exe
+taskkill /f /im SearchApp.exe
+taskkill /f /im TextInputHost.exe
+taskkill /f /im AsusUpdate.exe
+
+taskkill /f /im --- any other software.exe goes here! ---
+```
+
+You can get the script above and paste it in the notepad saving with the .bat extension (not .txt).
+
+After that, you just double click this file, and a UAC prompt will open:
+
+![](/images/how-to-debloat-microsoft-windows-10/Screen-Shot-2021-01-19-at-14.51.27.png)
+
+This is script runs with **elevated admin privileges**, and all apps that were running in the list will be killed instantaneously. Note that you might find some additional applications that you can add or remove from this list. You can customize it at your own needs.

@@ -1,0 +1,957 @@
+---
+title: "Microservices Security"
+publishedDate: "2019-10-30"
+lastUpdatedDate: "2019-10-30"
+tags:
+  - technology
+description: "This article was also published..."
+status: published
+---
+
+This article was also published at:
+
+[https://developers.redhat.com/blog/2019/10/30/how-to-secure-microservices-with-red-hat-single-sign-on-fuse-and-3scale/](https://developers.redhat.com/blog/2019/10/30/how-to-secure-microservices-with-red-hat-single-sign-on-fuse-and-3scale/)
+
+# MICROSERVICES SECURITY
+
+###### HOW TO SECURE APIs WITH RED HAT SINGLE SIGN-ON (KEYCLOAK), FUSE (CAMEL) AND 3SCALE.
+
+![security](/images/microservices-security/01.png)
+
+Technology
+Version
+
+[spring boot](https://spring.io/projects/spring-boot)
+2.1.8.RELEASE
+
+[apache camel](https://camel.apache.org/)
+[7.4.0.fuse-740036-redhat-00002](https://www.redhat.com/en/technologies/jboss-middleware/fuse)
+(w/ spring boot 1.5.22.RELEASE)
+
+[3Scale](https://www.3scale.net/)
+[2.6](https://access.redhat.com/containers/#/product/RedHat3scaleApiManagement)
+
+[Red Hat Single Sign-On](https://access.redhat.com/products/red-hat-single-sign-on)
+[7.3.3](https://access.redhat.com/containers/#/product/RedHatSingleSign-on)
+(based on [keycloak 4.8](https://access.redhat.com/articles/2342881))
+
+**TL;DR** This is a demonstration on how to protect APIs with Red Hat Single Sign-On (Keycloak) and 3Scale.
+
+![](/images/microservices-security/04.png)
+
+**WARNING**: This is a proof of concept. In production environments, there will be needed adittional configurations regarding scalability, security, and using a proper CA trusted certificate.
+
+![](/images/microservices-security/icon01.png) This is a lengthy article with step by step instructions, screenshots of products and architecture concepts. All source-code is hosted on the [github](https://github.com/aelkz/microservices-security).
+
+**The use-case scenario:**
+
+The main proposal is to achieve some concepts regarding security of microservices using a wide use-case scenario. A webapp is offered to promote easier understanding of all API calls and authorizations used.
+
+All APIs catalog is exposed bellow:
+
+### auth-integration-api endpoints
+
+**:8081**
+
+Method
+URI
+Description
+
+GET
+/health
+API actuator embedded health
+
+GET
+/metrics
+API actuator embedded metrics
+
+**:8080**
+
+Method
+URI
+Description
+Secured?
+
+POST
+/api/v1/product
+Create new product
+true
+
+DELETE
+/api/v1/product/\*
+Delete product by Id
+true
+
+PUT
+/api/v1/product/\*
+Update product by Id
+true
+
+GET
+/api/v1/product$
+Retrieve all products
+true
+
+GET
+/api/v1/product/\*
+//
+true
+
+GET
+/api/v1/status
+Check Integration API health
+true
+
+GET
+/api/v1/product/status
+Check Product API health
+true
+
+GET
+/api/v1/supplier/status
+Check Supplier API health
+true
+
+GET
+/api/v1/stock/status
+Check Stock API health
+true
+
+GET
+/api/v1/stock/maintenance
+Call Stock API maintenance
+true
+
+GET
+/api/v1/supplier/maintenance
+Call Supplier API maintenance
+true
+
+### stock-api endpoints
+
+Method
+URI
+Description
+
+GET
+/api/v1/sync
+Stock Maintenance
+
+GET
+/actuator/health
+Supplier Maintenance
+
+### supplier-api endpoints
+
+Method
+URI
+Description
+Secured?
+
+GET
+/api/v1/sync
+Supplier Maintenance
+true
+
+GET
+/actuator/health
+Supplier Maintenance
+true
+
+### product-api endpoints
+
+Method
+URI
+Description
+Secured?
+
+GET
+/api/v1/product
+Retrieve all products
+true
+
+GET
+/api/v1/product/{id}
+Retrieve product by Id
+true
+
+POST
+/api/v1/product
+Create new product
+true
+
+PUT
+/api/v1/product/{id}
+Update product by Id
+true
+
+DELETE
+/api/v1/product/{id}
+Delete product by Id
+true
+
+Each endpoint has it’s own specificity, so in order to drive our test scenarios, I’ve ended up with 3 simple questions:
+
+- This API will be protected by an Integration Layer (FUSE)?
+
+- This API will be exposed as a unique service on 3Scale AMP? (This will enable API self-service subscription for external clients)
+
+- This API will be managed by RHSSO (Keycloak) having it’s own client-id, groups and roles?
+
+So I came up with the following requirements matrix:
+
+![](/images/microservices-security/05.png)
+
+As we can see, each API has some differences, and we will strive to demonstrate each one in this **microservices security lab**!
+
+### SECURITY LAB: STEP 1 - PROJECT CREATION
+
+```
+export PROJECT_NAMESPACE=microservices
+
+# login into openshift platform
+oc login https://master.<>.com:443 --token=<>
+
+# create a new project
+oc new-project microservices-security --description="microservices security" --display-name="microservices-security"
+```
+
+### SECURITY LAB: STEP 2 - NEXUS SONATYPE DEPLOY
+
+In order to continue this lab, you must provide a Sonatype Nexus instance in the microservices namespace. The detailed instructions can be found in this [readme](https://github.com/aelkz/microservices-security/blob/master/README-NEXUS.md).
+
+### SECURITY LAB: STEP 3 - 3SCALE AMP DEPLOY
+
+In order to continue this lab, you must provision a 3Scale AMP into your Openshift Container Platform. Refer to the [documentation](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.6) on how to install the 3Scale application.
+
+### SECURITY LAB: STEP 4 - RED HAT SINGLE SIGN-ON DEPLOY
+
+In order to continue this lab, you must provision RHSSO into your Openshift Container Platform. Refer to the [documentation](https://access.redhat.com/products/red-hat-single-sign-on) on how to install the RHSSO application.
+
+### SECURITY LAB: STEP 5 - NEXUS ENVIRONMENT SETUP
+
+```
+export PROJECT_NAMESPACE=microservices-security
+
+git clone https://github.com/aelkz/microservices-security.git
+
+cd microservices-security/
+
+# download maven settings.xml file
+curl -o maven-settings-template.xml -s https://raw.githubusercontent.com/aelkz/microservices-security/master/_configuration/nexus/maven-settings-template.xml
+
+# change mirror url using your nexus openshift route
+export NEXUS_NAMESPACE=cicd-devtools
+export MAVEN_URL=http://$(oc get route nexus3 -n ${NEXUS_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-group/
+export MAVEN_URL_RELEASES=http://$(oc get route nexus3 -n ${NEXUS_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-releases/
+export MAVEN_URL_SNAPSHOTS=http://$(oc get route nexus3 -n ${NEXUS_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-snapshots/
+
+awk -v path="$MAVEN_URL" '/<url>/{sub(/>.*</,">"path"<")}1' maven-settings-template.xml > maven-settings.xml
+
+rm -fr maven-settings-template.xml
+```
+
+### SECURITY LAB: STEP 6 - RED HAT CONTAINER CATALOG SECRET FOR PULLING IMAGES
+
+```
+# NOTE. In order to import Red Hat container images, you must setup your credentials on openshift. See: https://access.redhat.com/articles/3399531
+# The config.json can be found at: /var/lib/origin/.docker/ on openshift master node.
+# create a secret with your container credentials
+
+export $PROJECT_NAMESPACE=microservices-security
+
+oc delete secret redhat.io -n $PROJECT_NAMESPACE
+oc create secret generic "redhat.io" --from-file=.dockerconfigjson=config.json --type=kubernetes.io/dockerconfigjson -n $PROJECT_NAMESPACE
+
+oc create secret generic redhat.io --from-file=.dockerconfigjson=config.json --type=kubernetes.io/dockerconfigjson -n $PROJECT_NAMESPACE
+oc secrets link default redhat.io --for=pull -n $PROJECT_NAMESPACE
+oc secrets link builder redhat.io -n $PROJECT_NAMESPACE
+```
+
+### SECURITY LAB: STEP 7 - RHSSO REALMS CONFIGURATION
+
+In this step we will configure realms on RHSSO to register all the 5 applications.
+
+```
+1. Login into RHSSO
+2. Create 3 realms with default settings:
+  - 3scale-api
+  - 3scale-admin
+  - 3scale-devportal
+```
+
+After creating the realms, you’ll have something like this:
+
+![](/images/microservices-security/07.png)
+
+On 3scale-api realm, create a client 3scale with the following definition:
+
+![](/images/microservices-security/08.png)
+
+Leave blank the fields: root URL , base URL and admin URL.
+
+On Service Account Roles **tab**, assign the role manage-clients from realm-management.
+
+Copy and save the client-secret that was genereated for this client. **This will be used later to configure OAuth service authentication on 3Scale.**
+
+The client-secret will be something like this:
+
+823b6ek5-1936-42e6-1135-d48rt3a1f632
+
+Under the realm 3scale-api create a **new user** with the following definition:
+
+![](/images/microservices-security/09.png)
+
+Also, set a new password for this user on Credentials tab with temporary=false and set to true the Email Verified attribute on Details tab.
+
+![](/images/microservices-security/10.png)
+
+### SECURITY LAB: STEP 8 - 3SCALE MICROSERVICES CONFIGURATION
+
+In this step we will register the APIs and configure them to enable 3Scale automatic **synchronization** with RHSSO.
+
+Let’s setup the auth-integration-api and the supplier-api.
+
+Create a new API on 3Scale admin portal. You can hit the NEW API link on the main dashboard.
+
+![](/images/microservices-security/12.png)
+
+This new API will represent the auth-integration-api, previously deployed.
+
+![](/images/microservices-security/11.png)
+
+Then, navigate through the Configuration menu under Integration, to setup the API mappings and security.
+
+![](/images/microservices-security/13.png)
+
+Choose APICast for the gateway and OpenID Connect in Integration Settings,
+
+![](/images/microservices-security/14.png)   ![](/images/microservices-security/15.png)
+
+**NOTE**. The OpenID Connection is chosen because we are going to protect our APIs with OAuth2 capabilities provided by RHSSO.
+
+Then click on ![](/images/microservices-security/16.png)
+
+Next, define the Private Base URL that is, your auth-integration-api URL and the staging and production URLs:
+
+![](/images/microservices-security/17.png)
+
+**NOTE**. Set your correct domain under each URL (that will be your API route on Openshift).
+
+Next, define all **mapping rules** for this API, accordingly to the following table:
+
+Verb
+Pattern
+
+- Metric or Method
+
+POST
+/api/v1/product
+1
+hits
+
+DELETE
+/api/v1/product/\*
+1
+hits
+
+PUT
+/api/v1/product/\*
+1
+hits
+
+GET
+/api/v1/product$
+1
+hits
+
+GET
+/api/v1/product/\*
+1
+hits
+
+GET
+/api/v1/status
+1
+hits
+
+GET
+/api/v1/product/status
+1
+hits
+
+GET
+/api/v1/supplier/status
+1
+hits
+
+GET
+/api/v1/stock/status
+1
+hits
+
+GET
+/api/v1/stock/maintenance
+1
+hits
+
+GET
+/api/v1/supplier/maintenance
+1
+hits
+
+Next, define the authentication mechanism for this API:
+
+![](/images/microservices-security/19.png)
+
+Next, configure API policies that will be required to enable proper communication between resources inside the Openshift Container Platform:
+
+![](/images/microservices-security/30.png)
+
+#### Please follow the next steps carefully:
+
+Select Authorization Code Flow , Service Accounts Flow and Direct Access Grant Flow under OIDC AUTHORIZATION FLOW section.
+
+On Credentials location set **As HTTP Headers**
+
+Netx, on Policies section add in this order:
+
+- CORS
+
+- 3Scale APIcast
+
+Expand CORS configuration, and set:
+
+**Enabled**=checked
+
+**ALLOW_HEADERS** (add one by one per input array)
+
+3Scale CORS Policy: Headers
+
+Content-Type
+
+Authorization
+
+Content-Length
+
+X-Requested-With
+
+Origin
+
+Accept
+
+X-Requested-With
+
+Content-Type
+
+Access-Control-Request-Method
+
+Access-Control-Request-Headers
+
+Accept-Encoding
+
+Accept-Language
+
+Connection
+
+Host
+
+Referer
+
+User-Agent
+
+Access-Control-Allow-Origin
+
+X-Business-FooBar
+
+**NOTE**. The latest header is used only for testing purposes.
+
+**allow_credentials**=checked
+
+**ALLOW_METHODS** (add one by one per input array)
+
+3Scale CORS Policy: Http Methods
+
+GET
+
+HEAD
+
+POST
+
+PUT
+
+DELETE
+
+OPTIONS
+
+**allow_origin**
+
+Leave empty.
+
+Leave the rest as default, and save the CORS configuration.
+
+**NOTE**. After every change, remember to **promote** the **staging** configuration to production.
+
+![](/images/microservices-security/20.png)
+
+You auth-integration-api is ready to be used!
+
+Repeat the same steps for Supplier API. This API will have only two mapping rules:
+
+Verb
+Pattern
+
+- Metric or Method
+
+POST
+/api/v1/sync
+1
+hits
+
+GET
+/actuator/health
+1
+hits
+
+### SECURITY LAB: STEP 9 - 3SCALE MICROSERVICES APPLICATION PLANS
+
+Let’s the define the APIs Application Plans. These plans will be used upon client registration for creating a new Application.
+
+![](/images/microservices-security/21.png)
+
+Click on ![](/images/microservices-security/23.png) link under Applications/Application Plans menu.
+
+Set the following configuration:
+
+![](/images/microservices-security/22.png)
+
+After this, click the Publish link to publish the application plan.
+
+Define the same steps for the Supplier API. Remember to publish the application plan also.
+
+After you have done all previous steps, you’ll get something like this:
+
+![](/images/microservices-security/24.png)
+
+### SECURITY LAB: STEP 10 - 3SCALE MICROSERVICES APPLICATION
+
+Navigate through the Audience menu and under Accounts/Listing ![](/images/microservices-security/25.png) a new account.
+
+Create a new account with your credentials for this demo:
+
+![](/images/microservices-security/26.png)
+
+This action will create for you a new 3Scale application for some APIs. If the application couldn’t be created, just hit the ![](/images/microservices-security/27.png) link.
+
+![](/images/microservices-security/28.png)
+
+The Application will be created for use with the auth-integration-api. A client-ID and a Client-Secret will be generated automatically and pushed into RHSSO on 3Scale-api realm by the zynnc-que 3Scale application.
+
+![](/images/microservices-security/29.png)
+
+**Troublehsooting**: After creating the API definition on 3Scale, check if the generated client was pushed into 3scale-api realm on RHSSO. If you’re using a **self-signed** certificate, you’ll need to make additional configurations in order to enable the zync-que 3Scale application synchronization. Please refer to the [Documentation: Troubleshooting SSL issues](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.6/html-single/operating_3scale/index#troubleshooting_ssl_issues) and [Configure Zync to use custom CA certificates](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.4/html-single/api_authentication/index#zync-oidc-integration)
+
+To **fix** this, you can proceed with the self-signed certificate installation:
+
+```
+export THREESCALE_NAMESPACE=3scale26
+export THREESCALE_ZYNC_QUE_POD=$(oc get pods --selector deploymentconfig=zync-que -n 3scale26 | { read line1 ; read line2 ; echo "$line2" ; } | awk '{print $1;}')
+export RHSSO_URI=sso73.apps.<YOUR-DOMAIN>.com
+
+echo | openssl s_client -showcerts -servername ${RHSSO_URI} -connect ${RHSSO_URI}:443 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > self-signed-cert.pem
+# Validate the connection first! must return HTTP/1.1 200 OK
+curl -v https://${RHSSO_URI}/auth/realms/master --cacert self-signed-cert.pem
+
+oc exec ${THREESCALE_ZYNC_QUE_POD} cat /etc/pki/tls/cert.pem > zync-que.pem -n ${THREESCALE_NAMESPACE}
+
+cp zync-que.pem zync-que-original.pem
+
+echo '\n# Red Hat Single Sign-On CA '${RHSSO_URI} >> zync-que.pem
+cat self-signed-cert.pem >> zync-que.pem
+
+# oc delete configmap zync-que-ca-bundle
+oc create configmap zync-que-ca-bundle --from-file=./zync-que.pem -n ${THREESCALE_NAMESPACE}
+oc label configmap zync-que-ca-bundle app=3scale-api-management -n ${THREESCALE_NAMESPACE}
+
+oc set volume dc/zync-que --overwrite --add --name=zync-que-ca-bundle --mount-path /etc/pki/tls/zync-que/zync-que.pem --sub-path zync-que.pem --source='{"configMap":{"name":"zync-que-ca-bundle","items":[{"key":"zync-que.pem","path":"zync-que.pem"}]}}' -n ${THREESCALE_NAMESPACE}
+
+oc patch dc/zync-que --type=json -p '[{"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/0/subPath", "value":"zync-que.pem"}]' -n ${THREESCALE_NAMESPACE}
+
+oc exec ${THREESCALE_ZYNC_QUE_POD} cat /etc/pki/tls/zync-que/zync-que.pem -n ${THREESCALE_NAMESPACE}
+
+oc set env dc/zync-que SSL_CERT_FILE=/etc/pki/tls/zync-que/zync-que.pem -n ${THREESCALE_NAMESPACE}
+
+# wait for the container restart and check the logs for any issue.
+oc logs -f po/${THREESCALE_ZYNC_QUE_POD}
+
+# Voila! You have the 3Scale in sync with RHSSO using a self-signed certificate.
+```
+
+### SECURITY LAB: STEP 11 - NODEJS WEB APPLICATION DEPLOYMENT
+
+In this step, we will be testing all scenarios with a suited NodeJS webapp based on Angular and Bootstrap. This application was designed to ease the understanding process. It can be used to give some clarification regarding the authorization behavior using our Jon Doe user account.
+
+```
+# Deploy nodejs-web application
+# https://access.redhat.com/containers/?tab=images#/registry.access.redhat.com/rhscl/nodejs-10-rhel7
+
+oc import-image rhscl/nodejs-10-rhel7 --from=registry.redhat.io/rhscl/nodejs-10-rhel7 -n openshift --confirm
+
+export APIS_NAMESPACE=microservices-security
+export THREESCALE_NAMESPACE=3scale26
+export RHSSO_NAMESPACE=sso73
+export RHSSO_URL=https://$(oc get route -n ${RHSSO_NAMESPACE} | grep secured | awk '{print $2;}')/auth
+export THREESCALE_APP_DOMAIN=<YOUR-DOMAIN>.com
+export THREESCALE_API_URL=https://$(oc get routes -n ${THREESCALE_NAMESPACE} | grep auth-integration | grep production | awk '{print $2;}')
+export INTEGRATION_HEALTH_URL=http://$(oc get routes -n ${APIS_NAMESPACE} | grep auth-integration | grep metrics | awk '{print $2;}')
+
+echo -e \
+" AUTH_CLIENT_ID=<AUTH_INTEGRATION_CLIENT_ID>\n" \
+"AUTH_URL=${RHSSO_URL}\n" \
+"AUTH_REALM=3scale-api\n" \
+"KEYCLOAK=true\n" \
+"INTEGRATION_URI=${THREESCALE_API_URL}\n" \
+"PRODUCT_PATH=/product\n" \
+"STOCK_PATH=/stock\n" \
+"SUPPLIER_PATH=/supplier\n" \
+"AUTH_CLIENT_SECRET=2d1beebcf1c9d00dd51be7a344abd87f\n" \
+"NODE_TLS_REJECT_UNAUTHORIZED=0\n" \
+> temp
+
+sed "s/^.//g" temp >> nodejs-config.properties
+
+rm -fr temp
+
+# oc delete configmap nodejs-web-config
+oc create configmap nodejs-web-config \
+ --from-literal=AUTH_CLIENT_ID= \
+ --from-literal=AUTH_URL= \
+ --from-literal=AUTH_REALM= \
+ --from-literal=KEYCLOAK= \
+ --from-literal=INTEGRATION_URI= \
+ --from-literal=PRODUCT_PATH= \
+ --from-literal=SUPPLIER_PATH= \
+ --from-literal=STOCK_PATH= \
+ --from-literal=AUTH_CLIENT_SECRET= \
+ --from-literal=NODE_TLS_REJECT_UNAUTHORIZED=
+
+# oc delete all -lapp=nodejs-web
+oc new-app nodejs-10-rhel7:latest~https://github.com/aelkz/microservices-security.git --name=nodejs-web --context-dir=/webapp -n ${APIS_NAMESPACE}
+
+# with the properties defined, set the environment variable on nodejs-web container.
+oc set env --from=configmap/nodejs-web-config dc/nodejs-web -n ${APIS_NAMESPACE}
+```
+
+**NOTE**. Set all environment variables on nodejs-web container in order to enable APIs calls properly.
+
+Expose the webapp route:
+
+```
+oc create route edge --service=nodejs-web --cert=webapp/server.cert --key=webapp/server.key -n ${APIS_NAMESPACE}
+```
+
+### SECURITY LAB: STEP 12 - APPLICATION SETTINGS AND ROLES
+
+Next step we will create our application roles.
+
+Theses roles will be assigned to the application users that will be used to login in our webapp.
+
+Access the client-id that represents the auth-integration client registered previsously by 3Scale application process.
+
+Go to the Settings tab on the client and apply additional configurations:
+
+**Valid Redirect URIs:**
+
+- http://\*
+
+- https://\*
+
+**Web Origins:** \*
+
+**NOTE**. Valid Redirect URIs and Web Origins must be set properly on production environments.
+
+Go to the Roles tab on Clients menu on RHSSO (Keycloak) and create the following roles:
+
+![](/images/microservices-security/32.png)
+
+Repeat the same steps for the Supplier API client. This client will have only one role defined:
+
+![](/images/microservices-security/33.png)
+
+**NOTE**. This client was also generated through 3Scale. (You must create 2 applications: one for auth-integration-api and another for supplier-api.
+
+### SECURITY LAB: STEP 13 - USERS ROLES
+
+In this step, we will be assigning all client roles to john doe user and the service-account user that will handle the supplier-service calls **inside** the auth-integration-api.
+
+Go to the Role Mappings tab on John Doe user-details page on Users menu.
+
+Assign all roles to the user, following the image bellow:
+
+![](/images/microservices-security/34.png)
+
+On Step 7 we’ve created the John Doe user. We will need to create **another user** that will be used as a service-account to call the Supplier API inside de auth-integration-api (**see**: line 123 on [application.yaml](https://raw.githubusercontent.com/aelkz/microservices-security/master/product/src/main/resources/application.yaml)). This user will have a password also, reset its credentials with 12345. The name of this user can be the the id of the Supplier API client-id generated by 3Scale appended with \_svcacc suffix (**see**: line 131 on [application.yaml](https://raw.githubusercontent.com/aelkz/microservices-security/master/product/src/main/resources/application.yaml)).
+
+We will also need to assign the SUPPLIER_MAINTAINER role to this user.
+
+**NOTE:** This procedure is used as an alternative to the token-exchange mechanism, but we could have a more detailed study of other possibilities of consuming third-party APIs by using the token-exchange feature.
+
+At last, create a realm-admin user. This user will serve to consume the RHSSO REST API.
+
+Assign the credentials 12345 and all realm-management roles.
+
+![](/images/microservices-security/35.png)
+
+At the end, we will have 3 users on 3scale-api realm:
+
+![](/images/microservices-security/36.png)
+
+### SECURITY LAB: STEP 14 - ARCHIVE SSO-COMMON LIBRARY JAR ON NEXUS
+
+```
+# NOTE: To make sure the auth-integration-api (FUSE) works correctly, we need to archive a library that will be used to provide authentication and authorizations capabilities on top of Red Hat Single Sing-On (Keycloak).Then, this library will be used on auth-integration-api to enable such capabilities.
+
+# Deploy auth-sso-common library on nexus
+export NEXUS_NAMESPACE=cicd-devtools
+export MAVEN_URL=http://$(oc get route nexus3 -n ${NEXUS_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-group/
+export MAVEN_URL_RELEASES=http://$(oc get route nexus3 -n ${NEXUS_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-releases/
+export MAVEN_URL_SNAPSHOTS=http://$(oc get route nexus3 -n ${NEXUS_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-snapshots/
+
+mvn clean package deploy -DnexusReleaseRepoUrl=$MAVEN_URL_RELEASES -DnexusSnapshotRepoUrl=$MAVEN_URL_SNAPSHOTS -s ./maven-settings.xml -e -X -pl auth-sso-common
+```
+
+This will create the following artifact on Nexus:
+
+![](/images/microservices-security/06.png)
+
+### SECURITY LAB: STEP 15 - MICROSERVICES DEPLOYMENT
+
+Retrieve RHSSO realm public key:
+
+```
+export RHSSO_REALM=3scale-api
+export RHSSO_URI=sso73.apps.<YOUR-DOMAIN>.com
+export TOKEN_URL=https://${RHSSO_URI}/auth/realms/${RHSSO_REALM}/protocol/openid-connect/token
+export THREESCALE_REALM_USERNAME=admin
+export THREESCALE_REALM_PASSWORD=12345
+
+TKN=$(curl -k -X POST "$TOKEN_URL" \
+ -H "Content-Type: application/x-www-form-urlencoded" \
+ -d "username=$THREESCALE_REALM_USERNAME" \
+ -d "password=$THREESCALE_REALM_PASSWORD" \
+ -d "grant_type=password" \
+ -d "client_id=admin-cli" \
+ | sed 's/.*access_token":"//g' | sed 's/".*//g')
+
+export REALM_KEYS_URL=https://${RHSSO_URI}/auth/admin/realms/${RHSSO_REALM}/keys
+
+RSA_PUB_KEY=$(curl -k -X GET "$REALM_KEYS_URL" \
+ -H "Authorization: Bearer $TKN" \
+ | jq -r '.keys[]  | select(.type=="RSA") | .publicKey' )
+
+# Create a valid .pem certificate
+
+REALM_CERT=$RHSSO_REALM.pem
+
+echo "-----BEGIN CERTIFICATE-----" > $REALM_CERT; echo $RSA_PUB_KEY >> $REALM_CERT; echo "-----END CERTIFICATE-----" >> $REALM_CERT
+
+# Check the generated .pem certificate
+# fold -s -w 64 $REALM_CERT > $RHSSO_REALM.fixed.pem
+# openssl x509 -in $RHSSO_REALM.fixed.pem -text -noout
+# openssl x509 -in $RHSSO_REALM.fixed.pem -noout -issuer -fingerprint
+```
+
+**Deploy** the parent project:
+
+```
+# Deploy parent project on nexus
+mvn clean package deploy -DnexusReleaseRepoUrl=$MAVEN_URL_RELEASES -DnexusSnapshotRepoUrl=$MAVEN_URL_SNAPSHOTS -s ./maven-settings.xml -e -X -N
+```
+
+**Deploy** stock-api
+
+```
+# oc delete all -lapp=stock-api
+oc new-app openjdk-8-rhel8:latest~https://github.com/aelkz/microservices-security.git --name=stock-api --context-dir=/stock --build-env='MAVEN_MIRROR_URL='${MAVEN_URL} -e MAVEN_MIRROR_URL=${MAVEN_URL}
+
+oc patch svc stock-api -p '{"spec":{"ports":[{"name":"http","port":8080,"protocol":"TCP","targetPort":8080}]}}'
+
+oc label svc stock-api monitor=springboot2-api
+```
+
+You could use the provided configmap and secret the set the required variables.
+
+```
+oc create -f configuration/configmap/stock-api-env.yml -n ${PROJECT_NAMESPACE}
+oc create -f configuration/secret/stock-api.yml -n ${PROJECT_NAMESPACE}
+
+export APP=stock-api
+oc set env dc/${APP} --from=secret/stock-api-secret
+oc set env dc/${APP} --from=configmap/stock-api-config
+```
+
+**Deploy** supplier-api
+
+**NOTE**. Please check all settings on application.yaml file before continuing.
+
+The following attributes must be updated to reflect your actual environment:
+
+- rest.security.issuer-uri on Line 61
+
+- security.oauth2.resource.id on Line 71
+
+- security.oauth2.resource.jwt.key-value on Line 75
+
+```
+# oc delete all -lapp=supplier-api
+oc new-app openjdk-8-rhel8:latest~https://github.com/aelkz/microservices-security.git --name=supplier-api --context-dir=/supplier --build-env='MAVEN_MIRROR_URL='${MAVEN_URL} -e MAVEN_MIRROR_URL=${MAVEN_URL}
+
+oc patch svc supplier-api -p '{"spec":{"ports":[{"name":"http","port":8080,"protocol":"TCP","targetPort":8080}]}}'
+
+oc label svc supplier-api monitor=springboot2-api
+```
+
+You could use the provided configmap and secret the set the required variables.
+
+```
+oc create -f configuration/configmap/supplier-api-env.yml -n ${PROJECT_NAMESPACE}
+oc create -f configuration/secret/supplier-api.yml -n ${PROJECT_NAMESPACE}
+
+export APP=supplier-api
+oc set env dc/${APP} --from=secret/supplier-api-secret
+oc set env dc/${APP} --from=configmap/supplier-api-config
+```
+
+Deploy product-api
+
+**NOTE**. Please check all settings on application.yaml file before continuing.
+
+The following attributes must be updated to reflect your actual environment:
+
+- rest.security.issuer-uri on Line 61
+
+- security.oauth2.resource.jwt.key-value on Line 75
+
+```
+# oc delete all -lapp=product-api
+oc new-app openjdk-8-rhel8:latest~https://github.com/aelkz/microservices-security.git --name=product-api --context-dir=/product --build-env='MAVEN_MIRROR_URL='${MAVEN_URL} -e MAVEN_MIRROR_URL=${MAVEN_URL}
+
+oc patch svc product-api -p '{"spec":{"ports":[{"name":"http","port":8080,"protocol":"TCP","targetPort":8080}]}}'
+
+oc label svc product-api monitor=springboot2-api
+```
+
+You could use the provided configmap and secret the set the required variables.
+
+```
+oc create -f configuration/configmap/product-api-env.yml -n ${PROJECT_NAMESPACE}
+oc create -f configuration/secret/product-api.yml -n ${PROJECT_NAMESPACE}
+
+export APP=product-api
+oc set env dc/${APP} --from=secret/product-api-secret
+oc set env dc/${APP} --from=configmap/product-api-config
+```
+
+### SECURITY LAB: STEP 16 - INTEGRATION DEPLOYMENT (FUSE)
+
+Now that the microservices APIs are deployed, let’s deploy the integration layer.
+
+```
+# import a new spring-boot camel template
+curl -o s2i-microservices-fuse74-spring-boot-camel.yaml -s https://raw.githubusercontent.com/aelkz/microservices-security/master/_configuration/openshift/s2i-microservices-fuse74-spring-boot-camel.yaml
+
+oc delete template s2i-microservices-fuse74-spring-boot-camel -n ${PROJECT_NAMESPACE}
+oc create -n ${PROJECT_NAMESPACE} -f s2i-microservices-fuse74-spring-boot-camel.yaml
+
+# NOTE. You may want to check the ..selfsigned.yaml template as it uses a customized imagestream for use with self-signed certificates. (see the APPENDIX-README.md for for info)
+
+export NEXUS_NAMESPACE=cicd-devtools
+export PROJECT_NAMESPACE=microservices-security
+export APP=auth-integration-api
+export APP_NAME=auth-integration
+export APP_GROUP=com.redhat.microservices
+export APP_GIT=https://github.com/aelkz/microservices-security.git
+export APP_GIT_BRANCH=master
+export MAVEN_URL=http://$(oc get route nexus3 -n ${NEXUS_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-group/
+export CUSTOM_TEMPLATE=s2i-microservices-fuse74-spring-boot-camel-selfsigned
+
+# the previous template have some modifications regarding services,route and group definitions.
+# oc delete all -lapp=${APP}
+oc new-app --template=${CUSTOM_TEMPLATE} --name=${APP} --build-env='MAVEN_MIRROR_URL='${MAVEN_URL} -e MAVEN_MIRROR_URL=${MAVEN_URL} --param GIT_REPO=${APP_GIT} --param APP_NAME=${APP} --param ARTIFACT_DIR=${APP_NAME}/target --param GIT_REF=${APP_GIT_BRANCH} --param MAVEN_ARGS_APPEND='-pl '${APP_NAME}' --also-make'
+
+# Use this param if using a different TAG (example)
+# --param BUILDER_VERSION=2.0
+
+# check the created services:
+# 1 for default app-context and 1 for /metrics endpoint.
+oc get svc -n ${PROJECT_NAMESPACE} | grep ${APP_NAME}
+
+# in order to auth-integration-api call the others APIs, we need to change it's configuration:
+curl -o application.yaml -s https://raw.githubusercontent.com/aelkz/microservices-security/master/_configuration/openshift/auth-integration/application.yaml
+
+# NOTE. If you have changed the service or application's name, you need to edit and change the downloaded application.yaml file with your definitions.
+
+# create a configmap and mount a volume for auth-integration-api
+oc delete configmap ${APP} -n ${PROJECT_NAMESPACE}
+
+oc create -f configuration/configmap/auth-integration-api-env.yml -n ${PROJECT_NAMESPACE}
+oc create -f configuration/secret/auth-integration-api.yml -n ${PROJECT_NAMESPACE}
+
+oc set env dc/${APP} --from=secret/auth-integration-api-secret
+oc set env dc/${APP} --from=configmap/auth-integration-api-config
+```
+
+**NOTE:** All application roles are prefixed with **ROLE\_** on source-code. This could be changed if you want at **line 80** in ../configuration/security/JwtAccessTokenCustomizer.java class. On RHSSO, these roles are registered without this prefix. See this [stack overflow](https://stackoverflow.com/questions/33205236/spring-security-added-prefix-role-to-all-roles-name) reference.
+
+### SECURITY LAB: FINAL STEP
+
+Open the nodejs webapp into your browser:
+
+```
+export MICROSERVICES_NAMESPACE=microservices-security
+echo http://$(oc get route nodejs-web -n ${MICROSERVICES_NAMESPACE} --template='{{ .spec.host }}')
+```
+
+If you’re using a self-signed certificate, the browser will request authorization to open an insecure URL. Navigate through the menus and test all actions clicking on every button to see the final result. If some action returns **401** or **403** it is probabilly some pending configuration on 3Scale or missing/invalid credentials on some application. If you get http error **500**, maybe the application is unavailable. Try changing Jon Doe roles and check every situation after refreshing the access token.
+
+![](/images/microservices-security/screen01.gif)
+
+(click on the image to see it larger)
+
+![](/images/microservices-security/37.png)
+
+I hope you enjoyed this tutorial. The troubleshooting was somewhat difficult because of all OAuth2 adapters and security mechanisms involved. Please, let me know if you want to improve something or add more context to this PoC. Thank you!
+
+### EXTERNAL REFERENCES
+
+API Key Generator
+
+[https://codepen.io/corenominal/pen/rxOmMJ](https://codepen.io/corenominal/pen/rxOmMJ)
+
+JWT Key Generator
+
+[http://jwt.io](http://jwt.io/)
+
+OpenID Connect Debugger
+
+[https://openidconnect.net](https://openidconnect.net/)
+
+Generate Plain Old Java Objects from JSON or JSON-Schema
+
+[http://www.jsonschema2pojo.org](http://www.jsonschema2pojo.org/)
+
+Securing REST API using Keycloak and Spring Oauth2 (@bcarun)
+
+[https://medium.com/@bcarunmail/securing-rest-api-using-keycloak-and-spring-oauth2-6ddf3a1efcc2](https://medium.com/@bcarunmail/securing-rest-api-using-keycloak-and-spring-oauth2-6ddf3a1efcc2)
+
+Keycloak: A real Scenario from Development to Production
+
+[https://medium.com/@siweheee/keycloak-a-real-scenario-from-development-to-production-ce57800e3ba9](https://medium.com/@siweheee/keycloak-a-real-scenario-from-development-to-production-ce57800e3ba9)
+
+HOW-TO setup 3scale OpenID Connect (OIDC) Integration with RH SSO
+
+[https://developers.redhat.com/blog/2017/11/21/setup-3scale-openid-connect-oidc-integration-rh-sso/](https://developers.redhat.com/blog/2017/11/21/setup-3scale-openid-connect-oidc-integration-rh-sso/)
+
+Red Hat Openshift Single Sign-On Secured N-tier application (@mechevarria)
+
+[https://github.com/aelkz/ocp-sso/blob/master/README.pt-br.md](https://github.com/aelkz/ocp-sso/blob/master/README.pt-br.md)

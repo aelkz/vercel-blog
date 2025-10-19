@@ -1,0 +1,1058 @@
+---
+title: "3Scale APICast mTLS workshop"
+publishedDate: "2022-05-20"
+lastUpdatedDate: "2022-05-20"
+tags:
+  - technology
+description: "In this workshop, you'll be tackling 3scale deployment with a new API as a product being deployed with a test user account."
+status: published
+---
+
+# 3Scale APICast mTLS workshop
+
+In this workshop, you’ll be tackling 3scale deployment with a new API as a product being deployed with a test user account and evaluating this API call using mutual-tls with a client certificate.
+
+This is a walkthrough tutorial, so let’s get started!.
+
+## What is TLS?
+
+Transport Layer Security (TLS) is an encryption protocol in wide use on the Internet. TLS, which was formerly called SSL, authenticates the server in a client-server connection and encrypts communications between client and server so that external parties cannot spy on the communications.
+
+## What is mutual TLS? (mTLS)
+
+Mutual TLS, or mTLS for short, is a method for mutual authentication. mTLS ensures that the parties at each end of a network connection are who they claim to be by verifying that they both have the correct private key. The information within their respective TLS certificates provides additional verification.
+
+![](/images/3scale-apicast-mtls-workshop/mtls.png)
+
+### Required Tools
+
+To complete this workshop, some tools are required. You must dowload, install and configure them properly before going to the next steps.
+
+- portecle: [https://sourceforge.net/projects/portecle](https://sourceforge.net/projects/portecle)
+
+- openssl: [https://www.openssl.org](https://www.openssl.org/)
+
+- openshift CLI: [https://docs.openshift.com/container-platform/4.10/cli_reference/openshift_cli/getting-started-cli.html](https://docs.openshift.com/container-platform/4.10/cli_reference/openshift_cli/getting-started-cli.html)
+
+- java (for sample API): [https://openjdk.java.net/install](https://openjdk.java.net/install)
+
+## 3Scale Architecture Components
+
+![](/images/3scale-apicast-mtls-workshop/3scale-architecture.png)
+
+## 1- 3Scale deployment (template install)
+
+Let’s deploy a simple and resized 3Scale environment for lab purposes. At any RHEL terminal, let’s obtain 3Scale yaml templates.
+The yaml template can easy the resizing of the 3Scale environment. You can also use the OpenShift 3Scale operator too, without any problem.
+
+```
+sudo subscription-manager repos --enable=rhel-7-server-3scale-amp-2-rpms
+
+# to install the latest version
+yum remove -y 3scale-amp-template
+sudo yum install 3scale-amp-template
+
+# or, to show all versions
+yum --showduplicates list 3scale-amp-template | expand
+```
+
+3Scale version 2.9 was used in this tutorial. But you can go with the latest version available. Let’s keep going…
+
+```
+ls -la /opt/amp/templates
+tar -cvf 3scale-amp-template-2.9.0-1.el7.tar.gz *
+/opt/amp/templates/3scale-amp-template-2.9.0-1.el7.tar.gz
+
+cp amp.yml amp-resized.yml
+
+sed -i "s/replicas:\ 1/replicas: 1\n    paused: true/" amp-resized.yml
+sed -i "s/32Gi/2Gi/" amp-resized.yml
+sed -i "s/cpu: 500m/cpu: 250m/" amp-resized.yml
+sed -i "s/cpu: \"1\"/cpu: 500m/" amp-resized.yml
+sed -i "s/cpu: \"2\"/cpu: 500m/" amp-resized.yml
+```
+
+After the resized yaml template is created. Let’s start creating the OpenShift namespace that 3Scale will be deployed.
+
+```
+export API_MANAGER_NS=3scale29
+export API_MASTER_NAME=$API_MANAGER_NS-master
+export API_MASTER_PASSWORD=master
+export API_TENANT_USERNAME=t1
+export API_TENANT_PASSWD=admin
+export API_TENANT_ACCESS_TOKEN=caNwTNAVJcPyuF9847bEdZG2gkq88f
+export GW_PROJECT=$API_TENANT_USERNAME-gw
+export TENANT_NAME=$API_TENANT_USERNAME-$API_MANAGER_NS
+export OCP_USERNAME=admin
+export OCP_PROJECT_PREFIX=$OCP_USERNAME
+export OCP_DOMAIN=<your-domain-goes-here>
+export OCP_WILDCARD_DOMAIN=apps.$OCP_DOMAIN
+
+oc new-project $API_MANAGER_NS \
+     --display-name="3scale29" \
+     --description="3scale API Management 2.9"
+
+oc project $API_MANAGER_NS
+```
+
+You will also be required to deploy an image registry secret in order to pull all 3Scale components without any issues. You can create a new one in this URL [https://console.redhat.com/openshift/install/pull-secret](https://console.redhat.com/openshift/install/pull-secret)
+
+```
+oc delete secret registry.redhat.io -n $API_MANAGER_NS
+oc delete secret 3scale-pull-secret -n $API_MANAGER_NS
+
+cat > registry-secret.yaml <<EOL
+apiVersion: v1
+kind: Secret
+metadata:
+  name: 3scale-pull-secret
+data:
+  .dockerconfigjson: ooooooooooooooo=
+type: kubernetes.io/dockerconfigjson
+EOL
+
+oc create -f registry-secret.yaml -n $API_MANAGER_NS
+oc secrets link default 3scale-pull-secret --for=pull -n $API_MANAGER_NS
+oc secrets link builder 3scale-pull-secret -n $API_MANAGER_NS
+
+# resized for lab purposes
+oc new-app --file amp-resized.yml \
+-p "WILDCARD_DOMAIN=$OCP_WILDCARD_DOMAIN" \
+-p "MASTER_NAME=$API_MASTER_NAME" \
+-p "MASTER_PASSWORD=$API_MASTER_PASSWORD" \
+-p "ADMIN_PASSWORD=$API_TENANT_PASSWD" \
+-p "ADMIN_ACCESS_TOKEN=$API_TENANT_ACCESS_TOKEN" \
+-p "TENANT_NAME=$TENANT_NAME" \
+-n $API_MANAGER_NS > 3scale29_amp_provision_details.txt
+
+--> Deploying template "3scale29/3scale-api-management" for "amp-resized.yml" to project 3scale29
+
+     3scale API Management
+     ---------
+     3scale API Management main system
+     Login on https://t1-3scale29-admin.apps.<YOUR-DOMAIN>.com as admin/admin
+     * With parameters:
+.. content omitted ..
+```
+
+The aforehead actions will deploy all components at a paused state. Then we will rollout all components in sequential to facilitate the deployment and avoid any errors.
+
+```
+# Resume the database tier deployments:
+for x in backend-redis system-memcache system-mysql system-redis zync-database; do echo Resuming dc:  $x; sleep 2; oc rollout resume dc $x -n $API_MANAGER_NS --as=system:admin; done
+
+# Resume backend listener and worker deployments:
+for x in backend-listener backend-worker; do echo Resuming dc:  $x; sleep 2; oc rollout resume dc $x -n $API_MANAGER_NS --as=system:admin; done
+
+# Resume the system-app and its two containers:
+oc rollout resume dc system-app -n $API_MANAGER_NS --as=system:admin;
+
+# Resume additional system and backend application utilities:
+for x in system-sidekiq backend-cron system-sphinx; do echo Resuming dc:  $x; sleep 2; oc rollout resume dc $x -n $API_MANAGER_NS --as=system:admin; done
+
+# Resume API gateway deployments:
+for x in apicast-staging apicast-production; do echo Resuming dc:  $x; sleep 2; oc rollout resume dc $x -n $API_MANAGER_NS --as=system:admin; done
+
+# Resume remaining deployments:
+for x in zync-que zync; do echo Resuming dc:  $x; sleep 2; oc rollout resume dc $x -n $API_MANAGER_NS --as=system:admin; done
+```
+
+## 2- 3Scale configuration
+
+### 2.1- Create 2 API keys for management with required scopes
+
+Under 3Scale admin portal, we will create two service tokens that will be used in any APICast instance (staging and production).
+
+![](/images/3scale-apicast-mtls-workshop/01.png)
+
+![](/images/3scale-apicast-mtls-workshop/02.png)
+
+provided token:
+
+298597dc6fcfc7f270ef33ada467f8cb25ea164e972fcffe4fa9fc8681a19f00
+
+![](/images/3scale-apicast-mtls-workshop/03.png)
+
+provided token:
+
+80fc89e0fef7607751a01c1bc8a4cad71f4aa8fbb7a0cdae20b0228017cfb65b
+
+![](/images/3scale-apicast-mtls-workshop/04.png)
+
+PS. You might want to use only Account Management API and read for the purpose of this workshop.
+
+## 3- Environment Setup
+
+### 3.1- Export environment variables at the terminal
+
+```
+# The 3Scale namespace
+export API_MANAGER_NS=3scale29
+export API_TENANT_USERNAME=t1
+export API_SYSTEM_PROVIDER_ADMIN=admin
+export API_MANAGER_ADMIN=$API_TENANT_USERNAME-$API_MANAGER_NS-$API_SYSTEM_PROVIDER_ADMIN
+
+export STAGING_TOKEN=298597dc6fcfc7f270ef33ada467f8cb25ea164e972fcffe4fa9fc8681a19f00
+export PRODUCTION_TOKEN=80fc89e0fef7607751a01c1bc8a4cad71f4aa8fbb7a0cdae20b0228017cfb65b
+
+export OCP_DOMAIN=<your-domain-goes-here>
+export OCP_WILDCARD_DOMAIN=apps.$OCP_DOMAIN
+```
+
+### 3.2- Create the following secrets at 3scale namespace
+
+```
+PASSWORD=https://$STAGING_TOKEN@$API_MANAGER_ADMIN.$OCP_WILDCARD_DOMAIN
+oc secret new-basicauth apicast-staging-mtls-configuration-url-secret --password=$PASSWORD -n $API_MANAGER_NS
+
+PASSWORD=https://$PRODUCTION_TOKEN@$API_MANAGER_ADMIN.$OCP_WILDCARD_DOMAIN
+oc secret new-basicauth apicast-production-mtls-configuration-url-secret --password=$PASSWORD -n $API_MANAGER_NS
+```
+
+### 3.3- Deploy a NEW staging gateway
+
+The default APICast gateways that comes in the standard yaml template will no be configured to work with mTLS. Instead we will create two additional APICast instances (staging and production) to work with mTLS.
+
+```
+oc new-app -f https://raw.githubusercontent.com/3scale/3scale-amp-openshift-templates/master/apicast-gateway/apicast.yml \
+--param CONFIGURATION_LOADER=lazy \
+--param DEPLOYMENT_ENVIRONMENT=staging \
+--param CONFIGURATION_CACHE=0 \
+--param APICAST_NAME=apicast-staging-mtls \
+--param AMP_RELEASE="2.9.0" \
+--param AMP_APICAST_IMAGE=registry.redhat.io/3scale-amp2/apicast-gateway-rhel8:3scale2.9 \
+--param CONFIGURATION_URL_SECRET=apicast-staging-mtls-configuration-url-secret \
+--param LOG_LEVEL=debug \
+-n $API_MANAGER_NS
+
+--> Deploying template "3scale29/3scale-gateway" for "https://raw.githubusercontent.com/3scale/3scale-amp-openshift-templates/master/apicast-gateway/apicast.yml" to project 3scale29
+
+     3scale APIcast API Gateway
+     ---------
+     3scale's APIcast is an NGINX based API gateway used to integrate your internal and external API services with 3scale's API Management Platform. It supports OpenID connect to integrate with external Identity Providers such as Red Hat Single Sign On, for API traffic authentication
+     * With parameters:
+.. content omitted ..
+```
+
+### 3.4- Deploy a NEW production gateway
+
+```
+oc new-app -f https://raw.githubusercontent.com/3scale/3scale-amp-openshift-templates/master/apicast-gateway/apicast.yml \
+--param CONFIGURATION_LOADER=lazy \
+--param DEPLOYMENT_ENVIRONMENT=production \
+--param CONFIGURATION_CACHE=300 \
+--param APICAST_NAME=apicast-production-mtls \
+--param AMP_RELEASE="2.9.0" \
+--param AMP_APICAST_IMAGE=registry.redhat.io/3scale-amp2/apicast-gateway-rhel8:3scale2.9 \
+--param CONFIGURATION_URL_SECRET=apicast-production-mtls-configuration-url-secret \
+--param LOG_LEVEL=debug \
+-n $API_MANAGER_NS
+# PS. regarding CONFIGURATION_LOADER=boot . see: https://access.redhat.com/solutions/5414981
+
+--> Deploying template "3scale29/3scale-gateway" for "https://raw.githubusercontent.com/3scale/3scale-amp-openshift-templates/master/apicast-gateway/apicast.yml" to project 3scale29
+
+     3scale APIcast API Gateway
+     ---------
+     3scale's APIcast is an NGINX based API gateway used to integrate your internal and external API services with 3scale's API Management Platform. It supports OpenID connect to integrate with external Identity Providers such as Red Hat Single Sign On, for API traffic authentication
+     * With parameters:
+.. content omitted ..
+```
+
+### 3.5- Check if both gateways are passed with readiness probes
+
+Note that at this moment, both APICast gateways are exposed at 8080/TCP.
+
+![](/images/3scale-apicast-mtls-workshop/BE206C82B790C7728507EB337F9826C9.png)
+
+```
+oc get dc -n $API_MANAGER_NS | grep apicast
+
+apicast-production        1          1         1         config,image(amp-apicast:2.9)
+apicast-production-mtls   1          1         1         config
+apicast-staging           1          1         1         config,image(amp-apicast:2.9)
+apicast-staging-mtls      1          1         1         config
+```
+
+## 4- Create mTLS certificates
+
+### 4.1- Create apicast-\*-mtls root CA certificate and key
+
+```
+export OCP_DOMAIN=<your-domain-goes-here>
+
+cat > pre-install.sh <<EOL
+SOURCE_DIR="ssl/root-ca"
+WORK_DIR="$(pwd)"
+CA_HOME="${WORK_DIR}/${SOURCE_DIR}"
+
+mkdir -p $CA_HOME $CA_HOME/certs $CA_HOME/private
+
+SOURCE_DIR="ssl/server"
+WORK_DIR="$(pwd)"
+SERVER_HOME="${WORK_DIR}/${SOURCE_DIR}"
+
+mkdir -p $SERVER_HOME $SERVER_HOME/certs $SERVER_HOME/private
+
+SOURCE_DIR="ssl/client"
+CLIENT_HOME="${WORK_DIR}/${SOURCE_DIR}"
+
+mkdir -p $CLIENT_HOME $CLIENT_HOME/certs $CLIENT_HOME/private
+
+tree -a -I '.git|.idea|.DS_Store|target'
+EOL
+
+cat > ca.cnf <<EOL
+[ req ]
+default_bits         = 2048
+default_md           = sha256
+utf8                 = yes
+string_mask          = utf8only
+prompt               = no
+distinguished_name   = root_dn
+x509_extensions      = ca_extensions
+
+[ root_dn ]
+countryName               = "BR"
+stateOrProvinceName       = "DF"
+localityName              = "BRASILIA"
+organizationName          = "REDHAT DEVELOPMENT ENVIRONMENT"
+organizationalUnitName    = "FOO"
+commonName                = "root-ca.$OCP_DOMAIN"
+
+[ ca_extensions ]
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always,issuer
+basicConstraints        = critical, CA:true
+keyUsage                = critical, digitalSignature, cRLSign, keyCertSign
+EOL
+
+cat > ca-setup.sh <<EOL
+#!/bin/bash
+
+SOURCE_DIR="ssl/root-ca"
+WORK_DIR="$(pwd)"
+CA_HOME="${WORK_DIR}/${SOURCE_DIR}"
+
+chmod 700 $CA_HOME/private
+mv $WORK_DIR/ca.cnf $CA_HOME
+
+openssl req -x509 -utf8 -nameopt utf8 \
+    -sha256 -days 3650 -newkey rsa:4096 \
+    -config $CA_HOME/ca.cnf \
+    -keyout $CA_HOME/private/ca.key -out $CA_HOME/certs/ca.crt \
+    -nodes
+
+tree -a -I '.git|.idea|.DS_Store|target'
+EOL
+
+chmod +x pre-install.sh ; ./pre-install.sh
+
+chmod +x ca-setup.sh ; ./ca-setup.sh
+```
+
+### 4.2- Create apicast-\*-mtls server certificate and key signed with root CA certificate
+
+Tips:
+
+- When generating a certificate, the common name **must be the name of the host** of the self managed apicast in the Public Base URL e.g. "test-api-stg.".
+  If it does not match, then the curl call will fail with an error message.
+
+- The host of the self managed apicast in the Public Base URL cannot exceed 64 chars. The max length of the CN (common name) is 64
+
+```
+export OCP_DOMAIN=<your-domain-goes-here>
+export OCP_WILDCARD_DOMAIN=apps.$OCP_DOMAIN
+export API_SUBDOMAIN=openbanking
+export STG_SUBDOMAIN=$API_SUBDOMAIN-stg
+export PRD_SUBDOMAIN=$API_SUBDOMAIN
+
+export WORK_DIR="$(pwd)"
+export SSL_HOME="${WORK_DIR}/ssl"
+export CA_HOME="${WORK_DIR}/ssl/root-ca"
+export SERVER_HOME="${WORK_DIR}/ssl/server"
+
+rm -fr $SERVER_HOME/certs/** $SERVER_HOME/private/** $SERVER_HOME/server.cnf
+
+cat > server.cnf <<EOL
+[ req ]
+default_bits       = 2048
+default_keyfile    = server.key
+distinguished_name = server_distinguished_name
+x509_extensions    = server_extensions
+string_mask        = utf8only
+prompt             = no
+
+[ server_distinguished_name ]
+countryName               = "BR"
+stateOrProvinceName       = "DF"
+localityName              = "BRASILIA"
+organizationName          = "REDHAT DEVELOPMENT ENVIRONMENT"
+organizationalUnitName    = "FOO"
+commonName                = $STG_SUBDOMAIN.$OCP_WILDCARD_DOMAIN
+
+[ server_extensions ]
+subjectKeyIdentifier   = hash
+basicConstraints       = CA:FALSE
+nsCertType             = server
+nsComment              = "OpenSSL Generated Server Certificate"
+keyUsage               = critical, digitalSignature, keyEncipherment, dataEncipherment, nonRepudiation
+extendedKeyUsage       = serverAuth
+# this will be the final openshift route.
+# in this lab, I will create the following openshift routes with TLS termination Passthrough:
+# - https://openbanking-stg.apps.<your-domain-goes-here>
+# - https://openbanking.apps.<your-domain-goes-here>
+# PS. commonName must be identical to the 3scale exposed product route (BASE URL)
+# https://oidref.com/2.5.29.17
+subjectAltName         = DNS:$STG_SUBDOMAIN.$OCP_WILDCARD_DOMAIN,DNS:$PRD_SUBDOMAIN.$OCP_WILDCARD_DOMAIN
+EOL
+
+cat > server-setup.sh <<EOL
+#!/bin/bash
+
+SOURCE_DIR="ssl/server"
+WORK_DIR="$(pwd)"
+SERVER_HOME="${WORK_DIR}/${SOURCE_DIR}"
+
+chmod 700 $SERVER_HOME/private
+touch $SERVER_HOME/private/server.key
+
+mv $WORK_DIR/server.cnf $SERVER_HOME
+
+# create server key and certificate request (.csr)
+openssl req -utf8 -nameopt utf8 \
+    -sha256 -days 3650 -newkey rsa:2048 \
+    -config $SERVER_HOME/server.cnf \
+    -reqexts server_extensions \
+    -keyout $SERVER_HOME/private/server.key -out $SERVER_HOME/certs/server.csr \
+    -nodes
+
+# then we must sign the server certificate request (.csr) with our internal environment root CA
+openssl x509 -req \
+    -days 3650 -sha256 \
+    -in $SERVER_HOME/certs/server.csr \
+    -CA $CA_HOME/certs/ca.crt -CAkey $CA_HOME/private/ca.key \
+    -CAcreateserial -out $SERVER_HOME/certs/server.crt
+
+tree -a -I '.git|.idea|.DS_Store|target'
+EOL
+
+chmod +x server-setup.sh ; ./server-setup.sh
+
+# verify server csr content
+openssl req -in $SERVER_HOME/certs/server.csr -noout -text
+
+# verify server crt content
+openssl x509 -in $SERVER_HOME/certs/server.crt -text -noout
+```
+
+This will create a single certificate for use with both staging and production apicast.
+
+PS. server.cnf commonName attribute must be identical to the 3scale exposed product route (BASE URL)
+
+The 3Scale API (Product) BASE URL will be defined later in this workshop.
+
+![](/images/3scale-apicast-mtls-workshop/2cs.png)
+
+### 4.3- (OPTIONAL) Check if private key matches server certificate (md5 hash)
+
+```
+openssl x509 -noout -modulus -in ssl/server/certs/server.crt | openssl md5
+openssl rsa -noout -modulus -in ssl/server/private/server.key | openssl md5
+
+#example output:
+$ openssl x509 -noout -modulus -in ssl/server/certs/server.crt | openssl md5
+f8b3251441463355cdcc9996e54daa8a
+$ openssl rsa -noout -modulus -in ssl/server/private/server.key | openssl md5
+f8b3251441463355cdcc9996e54daa8a
+```
+
+### 4.4- Create 3scale mTLS API client certificate and key signed with root CA certificate
+
+```
+export WORK_DIR="$(pwd)"
+export SSL_HOME="${WORK_DIR}/ssl"
+export CA_HOME="${WORK_DIR}/ssl/root-ca"
+export CLIENT_HOME="${WORK_DIR}/ssl/client"
+export CLIENT_SUBDOMAIN=localhost
+export CLIENT_WILDCARD_DOMAIN=com.br
+
+rm -fr $CLIENT_HOME/certs/** $CLIENT_HOME/private/** $CLIENT_HOME/client.cnf
+
+cat > client.cnf <<EOL
+[ req ]
+default_bits       = 2048
+default_keyfile    = client.key
+distinguished_name = client_distinguished_name
+x509_extensions    = client_extensions
+string_mask        = utf8only
+prompt             = no
+
+[ client_distinguished_name ]
+countryName               = "BR"
+stateOrProvinceName       = "DF"
+localityName              = "BRASILIA"
+organizationName          = "REDHAT DEVELOPMENT ENVIRONMENT"
+organizationalUnitName    = "FOO"
+commonName                = $CLIENT_SUBDOMAIN.$CLIENT_WILDCARD_DOMAIN
+
+[ client_extensions ]
+subjectKeyIdentifier   = hash
+basicConstraints       = CA:FALSE
+nsCertType             = client, email
+nsComment              = "OpenSSL Generated Client Certificate"
+keyUsage               = critical, digitalSignature, keyEncipherment, nonRepudiation
+extendedKeyUsage       = clientAuth, emailProtection
+EOL
+
+cat > client-setup.sh <<EOL
+#!/bin/bash
+
+SOURCE_DIR="ssl/client"
+WORK_DIR="$(pwd)"
+CLIENT_HOME="${WORK_DIR}/${SOURCE_DIR}"
+
+chmod 700 $CLIENT_HOME/private
+touch $CLIENT_HOME/private/client.key
+
+mv $WORK_DIR/client.cnf $CLIENT_HOME
+
+# create client key and certificate request (.csr)
+openssl req -utf8 -nameopt utf8 \
+    -sha256 -days 3650 -newkey rsa:2048 \
+    -config $CLIENT_HOME/client.cnf \
+    -reqexts client_extensions \
+    -keyout $CLIENT_HOME/private/client.key -out $CLIENT_HOME/certs/client.csr \
+    -nodes
+
+# then we must sign the client certificate request (.csr) with our internal environment root CA
+openssl x509 -req \
+    -days 3650 -sha256 \
+    -in $CLIENT_HOME/certs/client.csr \
+    -CA $CA_HOME/certs/ca.crt -CAkey $CA_HOME/private/ca.key \
+    -CAcreateserial -out $CLIENT_HOME/certs/client.crt
+
+tree -a -I '.git|.idea|.DS_Store|target'
+EOL
+
+chmod +x client-setup.sh ; ./client-setup.sh
+
+# verify client csr constent
+openssl req -in $CLIENT_HOME/certs/client.csr -noout -text
+
+# verify client crt content
+openssl x509 -in $CLIENT_HOME/certs/client.crt -text -noout
+```
+
+This will create a single certificate for use with the client (the API consumer).
+
+### 4.5- (OPTIONAL) Check if private key matches client certificate (md5 hash)
+
+```
+openssl x509 -noout -modulus -in ssl/client/certs/client.crt | openssl md5
+openssl rsa -noout -modulus -in ssl/client/private/client.key | openssl md5
+```
+
+### 4.6- Check all generated certificates
+
+```
+$ cd ssl
+$ tree -a -I '.git|.idea|.DS_Store|target'
+
+.
+├── client
+│   ├── certs
+│   │   ├── client.crt
+│   │   └── client.csr
+│   ├── client.cnf
+│   └── private
+│       └── client.key
+├── root-ca
+│   ├── ca.cnf
+│   ├── certs
+│   │   ├── ca.crt
+│   │   └── ca.srl
+│   └── private
+│       └── ca.key
+└── server
+    ├── certs
+    │   ├── server.crt
+    │   └── server.csr
+    ├── private
+    │   └── server.key
+    └── server.cnf
+
+9 directories, 12 files
+```
+
+## 5- Deploy a sample API
+
+### 5.1- Nexus deployment for dependency management
+
+```
+export API_MANAGER_NS=3scale29
+export PROJECT_DESCRIPTION=workshop
+export PROJECT_NAMESPACE=$API_MANAGER_NS
+export PROJECT_API=product-api
+
+oc describe namespace $PROJECT_NAMESPACE
+
+# --- NEXUS
+# https://docs.openshift.com/container-platform/4.7/applications/deployments/what-deployments-are.html
+oc new-app --docker-image docker.io/sonatype/nexus3:latest -n $PROJECT_NAMESPACE
+
+oc get deployments -n $PROJECT_NAMESPACE
+
+oc rollout pause dc/nexus3 -n $PROJECT_NAMESPACE # OCP3-11
+oc rollout pause deployment/nexus3 -n $PROJECT_NAMESPACE # OCP4
+
+oc expose svc nexus3 -n $PROJECT_NAMESPACE
+
+# OCP3-11
+export OCP_RESOURCE=dc
+# OCP4
+export OCP_RESOURCE=deployment
+
+oc set resources $OCP_RESOURCE/nexus3 --limits=memory=4Gi,cpu=2 --requests=memory=2Gi,cpu=500m -n $PROJECT_NAMESPACE
+oc set volume $OCP_RESOURCE/nexus3 --add --overwrite --name=nexus3-volume-1 --mount-path=/nexus-data/ --type persistentVolumeClaim --claim-name=nexus-pvc --claim-size=10Gi -n $PROJECT_NAMESPACE
+oc set probe $OCP_RESOURCE/nexus3 -n $PROJECT_NAMESPACE --liveness --failure-threshold 3 --initial-delay-seconds 60 -- echo ok
+oc set probe $OCP_RESOURCE/nexus3 -n $PROJECT_NAMESPACE --readiness --failure-threshold 3 --initial-delay-seconds 60 --get-url=http://:8081/
+oc rollout resume $OCP_RESOURCE/nexus3 -n $PROJECT_NAMESPACE
+
+oc get pods -n $PROJECT_NAMESPACE | grep Running
+#[root@ocp-bastion lab04]# oc get pods | grep Running
+#nexus3-xyz    1/1     Running     0          2m36s
+
+export NEXUS_POD=$(oc get pods -lapp=nexus3 -n ${PROJECT_NAMESPACE} | { read line1 ; read line2 ; echo "$line2" ; } | awk '{print $1;}')
+
+oc exec ${NEXUS_POD} -- cat /nexus-data/admin.password
+# example output:
+33456b65-7e85-4dfc-a063-78b413cf4a47
+
+oc describe pod $NEXUS_POD
+
+echo http://$(oc get routes -n $PROJECT_NAMESPACE | grep nexus3 | awk '{print $2;}')
+```
+
+#### 5.1.1- – Login into nexus
+
+Log into the nexus and change password to: admin123
+
+![](/images/3scale-apicast-mtls-workshop/04a.png)
+
+Enable anonymous access
+
+![](/images/3scale-apicast-mtls-workshop/04b.png)
+
+### 5.2 – Continue to app deployment
+
+Could be any API that you might want. This API have the following stack:
+
+- Java 8
+
+- Springboot 2.1.8.RELEASE
+
+- Maven
+
+This API is **unsecured**. It doesn’t have any security dependencies (e.g. OpenID Connect)
+
+```
+curl -o setup_nexus3.sh -s https://raw.githubusercontent.com/aelkz/microservices-observability/master/_configuration/nexus/setup_nexus3.sh
+
+oc exec $NEXUS_POD -- ls nexus-data/etc/
+oc exec $NEXUS_POD -- bash -c "echo 'nexus.scripts.allowCreation=true' >> /nexus-data/etc/nexus.properties"
+oc exec $NEXUS_POD -- cat /nexus-data/etc/nexus.properties
+
+# scale down nexus pod and scale up to update settings
+oc scale $OCP_RESOURCE/nexus3 -n $PROJECT_NAMESPACE --replicas=0
+oc scale $OCP_RESOURCE/nexus3 -n $PROJECT_NAMESPACE --replicas=1
+
+export NEXUS_POD=$(oc get pods -lapp=nexus3 -n ${PROJECT_NAMESPACE} | { read line1 ; read line2 ; echo "$line2" ; } | awk '{print $1;}')
+
+chmod +x setup_nexus3.sh
+
+./setup_nexus3.sh admin admin123 http://$(oc get route nexus3 --template='{{ .spec.host }}')
+# --- END-NEXUS
+
+git clone https://github.com/aelkz/microservices-security.git
+
+cd microservices-security/
+
+curl -o maven-settings-template.xml -s https://raw.githubusercontent.com/aelkz/microservices-security/master/_configuration/nexus/maven-settings-template.xml
+
+export MAVEN_URL=http://$(oc get route nexus3 -n ${PROJECT_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-group/
+export MAVEN_URL_RELEASES=http://$(oc get route nexus3 -n ${PROJECT_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-releases/
+export MAVEN_URL_SNAPSHOTS=http://$(oc get route nexus3 -n ${PROJECT_NAMESPACE} --template='{{ .spec.host }}')/repository/maven-snapshots/
+
+awk -v path="$MAVEN_URL" '/<url>/{sub(/>.*</,">"path"<")}1' maven-settings-template.xml > maven-settings.xml
+
+rm -fr maven-settings-template.xml
+
+# Deploy parent project on nexus
+mvn clean package deploy -DnexusReleaseRepoUrl=$MAVEN_URL_RELEASES -DnexusSnapshotRepoUrl=$MAVEN_URL_SNAPSHOTS -s ./maven-settings.xml -e -X -N
+
+oc delete all -lapp=${PROJECT_API}
+
+oc import-image ubi8/openjdk-8-runtime:1.10-1 --from=registry.access.redhat.com/ubi8/openjdk-8-runtime -n ${PROJECT_NAMESPACE} --confirm
+oc import-image ubi8/openjdk-8:1.10-1 --from=registry.access.redhat.com/ubi8/openjdk-8 --confirm -n ${PROJECT_NAMESPACE} --confirm
+
+oc tag openjdk-8-runtime:1.10-1 openjdk-8-runtime:latest -n ${PROJECT_NAMESPACE}
+oc tag openjdk-8:1.10-1 openjdk-8:latest -n ${PROJECT_NAMESPACE}
+
+oc delete deployment,dc,is,bc,svc,route $PROJECT_API
+# first build will take longer due to library download in nexus
+oc new-app openjdk-8:latest~https://github.com/aelkz/microservices-security.git -n ${PROJECT_NAMESPACE} --name=${PROJECT_API} --context-dir=/product-insecure --build-env='MAVEN_MIRROR_URL='${MAVEN_URL} -e MAVEN_MIRROR_URL=${MAVEN_URL}
+
+oc patch svc $PROJECT_API -p '{"spec":{"ports":[{"name":"http","port":8080,"protocol":"TCP","targetPort":8080}]}}' -n ${PROJECT_NAMESPACE}
+
+oc expose svc ${PROJECT_API} -n ${PROJECT_NAMESPACE}
+```
+
+### 5.3 – Test API with cURL
+
+```
+# echo http://$(oc get svc -lapp=$PROJECT_API -n $PROJECT_NAMESPACE | awk 'NR!=1 {print $1;}').${PROJECT_NAMESPACE}.svc.cluster.local:8080
+export APP_ROUTE=http://$(oc get routes -n $PROJECT_NAMESPACE | grep $PROJECT_API | awk '{print $2;}')
+
+curl -L -X GET $APP_ROUTE/api/v1/product
+
+curl -L -X POST $APP_ROUTE/api/v1/product \
+-H 'Accept: application/json' \
+-H 'Content-Type: application/json' \
+--data-raw '{
+    "status": "ACTIVE",
+    "name": "Eletric Guitar",
+    "code": "200",
+    "description": "Fender Tom Morello Stratocaster Rosewood Fingerboard Black",
+    "price": 239.99
+}'
+```
+
+## 6- Configure apicast gateways
+
+### 6.1- Check all apicast instances
+
+```
+oc get dc | grep apicast -n $API_MANAGER_NS
+
+apicast-production        10         2         2         config,image(amp-apicast:2.9)
+apicast-production-mtls   1          1         1         config
+apicast-staging           1          1         1         config,image(amp-apicast:2.9)
+apicast-staging-mtls      1          1         1         config
+```
+
+### 6.2- Create the apicast-tls secret to be used with newly created gateways
+
+PS. Step 4 from [https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation)
+
+```
+oc create secret tls apicast-tls --cert=ssl/server/certs/server.crt --key=ssl/server/private/server.key -n $API_MANAGER_NS
+```
+
+### 6.3- Mount the secret as a volume at the apicast-staging-mtls and apicast-production-mtls gateways
+
+PS. Step 5 from [https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation)
+
+```
+oc set volume dc/apicast-production-mtls --add --name=certificates --mount-path=/var/run/secrets/apicast --secret-name=apicast-tls --overwrite -n $API_MANAGER_NS
+oc set volume dc/apicast-staging-mtls --add --name=certificates --mount-path=/var/run/secrets/apicast --secret-name=apicast-tls --overwrite -n $API_MANAGER_NS
+```
+
+### 6.4- Check for existence of certificates within the apicast containers
+
+```
+export APICAST_STG_POD=$(oc get pods -ldeploymentconfig=apicast-staging-mtls -n $API_MANAGER_NS | { read line1 ; read line2 ; echo "$line2" ; } | awk '{print $1;}')
+export APICAST_PRD_POD=$(oc get pods -ldeploymentconfig=apicast-production-mtls -n $API_MANAGER_NS | { read line1 ; read line2 ; echo "$line2" ; } | awk '{print $1;}')
+
+oc exec $APICAST_STG_POD -- ls /var/run/secrets/apicast
+
+oc exec $APICAST_PRD_POD -- ls /var/run/secrets/apicast
+
+#example output:
+tls.crt
+tls.key
+```
+
+### 6.5- Apply ENV at DeploymentConfig for apicast-staging-mtls and apicast-production-mtls gateways
+
+PS. Step 6 from [https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation)
+
+```
+oc set env dc/apicast-production-mtls APICAST_HTTPS_PORT=8443 APICAST_HTTPS_CERTIFICATE=/var/run/secrets/apicast/tls.crt APICAST_HTTPS_CERTIFICATE_KEY=/var/run/secrets/apicast/tls.key -n $API_MANAGER_NS
+oc set env dc/apicast-staging-mtls APICAST_HTTPS_PORT=8443 APICAST_HTTPS_CERTIFICATE=/var/run/secrets/apicast/tls.crt APICAST_HTTPS_CERTIFICATE_KEY=/var/run/secrets/apicast/tls.key -n $API_MANAGER_NS
+```
+
+### 6.6- Patch the service route and expose 8443
+
+PS. Step 7 from [https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation)
+
+PS. Step 8 from [https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation) is not necessary.
+
+```
+oc patch service apicast-production-mtls -p '{"spec":{"ports":[{"name":"https","port":8443,"protocol":"TCP"}]}}' -n $API_MANAGER_NS
+oc patch service apicast-staging-mtls -p '{"spec":{"ports":[{"name":"https","port":8443,"protocol":"TCP"}]}}' -n $API_MANAGER_NS
+
+# remove 8080 port from both services apicast-staging-mtls and apicast-production-mtls gateways
+oc get svc apicast-staging-mtls -n 3scale -o json | jq '.spec.ports'
+oc get svc apicast-staging-mtls -n 3scale -o json | jq '.spec.ports | map(.name == "proxy")'
+
+PROXY_INDEX=$(oc get svc apicast-staging-mtls -n 3scale -o json | jq '.spec.ports | map(.name == "proxy") | index(true)')
+oc patch svc apicast-staging-mtls --type=json -p="[{'op':'remove','path':'/spec/ports/$PROXY_INDEX'}]" -n 3scale
+
+PROXY_INDEX=$(oc get svc apicast-production-mtls -n 3scale -o json | jq '.spec.ports | map(.name == "proxy") | index(true)')
+oc patch svc apicast-production-mtls --type=json -p="[{'op':'remove','path':'/spec/ports/$PROXY_INDEX'}]" -n 3scale
+```
+
+![](/images/3scale-apicast-mtls-workshop/05a.png)
+
+![](/images/3scale-apicast-mtls-workshop/05b.png)
+
+### 6.7- Expose the apicast-staging-mtls service as route for initial test
+
+PS. Step 9 from [https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.9/html-single/administering_the_api_gateway/index#tls-certificate-validation) is not necessary.
+
+```
+export OCP_DOMAIN=<your-domain-goes-here>
+export OCP_WILDCARD_DOMAIN=apps.$OCP_DOMAIN
+export API_SUBDOMAIN=openbanking
+
+oc create route passthrough --service=apicast-staging-mtls --port=https --hostname=$API_SUBDOMAIN.$OCP_WILDCARD_DOMAIN -n $API_MANAGER_NS
+```
+
+![](/images/3scale-apicast-mtls-workshop/06as.png)
+
+#### 6.7.1- Take a look at apicast-staging-mtls pod logs. You’ll see something like this:
+
+```
+2021/10/18 19:37:39 [warn] 20#20: *149 errors.lua:52: get_upstream(): could not find service for host: openbanking.apps.<your-domain-goes-here>, requestID=0afcea27eca38cd0e5a0e42d9032c794, client: 10.1.2.1, server: _, request: "GET / HTTP/2.0", host: "openbanking.apps.<your-domain-goes-here>", referrer: "https://master.<your-domain-goes-here>/ "
+```
+
+This error shows that 3scale doesn’t have any product (service) configured for this BASE_URL (yet!)
+
+## 7- Configure 3Scale Product
+
+![](/images/3scale-apicast-mtls-workshop/07a.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/07b.png)
+
+## 8- Add a new Backend
+
+![](/images/3scale-apicast-mtls-workshop/08a.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/08b.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/08c.jpg)
+
+PS. For Private Base URL use:
+
+```
+export API_MANAGER_NS=3scale29
+export PROJECT_NAMESPACE=$API_MANAGER_NS
+export PROJECT_API=product-api
+
+echo http://$(oc get svc -lapp=$PROJECT_API -n $PROJECT_NAMESPACE | awk 'NR!=1 {print $1;}').${PROJECT_NAMESPACE}.svc.cluster.local:8080
+```
+
+## 9- Link the Backend with Product
+
+![](/images/3scale-apicast-mtls-workshop/09a.png)
+
+![](/images/3scale-apicast-mtls-workshop/09b.png)
+
+## 10- Create Product mapping rules
+
+![](/images/3scale-apicast-mtls-workshop/10a.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/10b.png)
+
+![](/images/3scale-apicast-mtls-workshop/10c.png)
+
+![](/images/3scale-apicast-mtls-workshop/10d.png)
+
+## 11- Create at least one application plan
+
+![](/images/3scale-apicast-mtls-workshop/11a.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/11b.png)
+
+![](/images/3scale-apicast-mtls-workshop/11c.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/11d.png)
+
+## 12- Add a new user account (API consumer account) for use with the Product
+
+![](/images/3scale-apicast-mtls-workshop/12a.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/12bs.png)
+
+## 13- Remove the 3scale default application plan from this account (cleanup)
+
+![](/images/3scale-apicast-mtls-workshop/13as.png)
+
+![](/images/3scale-apicast-mtls-workshop/13b.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/13c.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/13d.jpg)
+
+## 14- Create a new application plan referencing the recently created Product
+
+![](/images/3scale-apicast-mtls-workshop/14a.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/14b.png)
+
+![](/images/3scale-apicast-mtls-workshop/14c.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/14d.png)
+
+3Scale will provide a User Key for use with API calls.
+
+- This key can be set at HTTP Headers or Payload request body.
+
+- This key will be evaluated for both staging and production gateways.
+
+## 15- Configure Staging and Public Product Base URLs
+
+![](/images/3scale-apicast-mtls-workshop/15as.png)
+
+Remember to mark APIcast self-managed option as we will be using the apicast-\*-mtls gateways and not the default ones.
+
+PS. Use the server certificate CommonName (CN) and Subject Alternative Name (SAN) as defined in the server certificate request (server.csr).
+
+```
+export OCP_DOMAIN=<your-domain-goes-here>
+export OCP_WILDCARD_DOMAIN=apps.$OCP_DOMAIN
+export API_SUBDOMAIN=openbanking
+
+# This will be the Production Public Base URL (openshift external route)
+commonName = $API_SUBDOMAIN.$OCP_WILDCARD_DOMAIN
+```
+
+Then click on Update Product button.
+
+## 16- Promote all configurations from staging to production
+
+![](/images/3scale-apicast-mtls-workshop/16a.jpg)
+
+![](/images/3scale-apicast-mtls-workshop/16bs.png)
+
+After that, 3scale will persist it’s internal configuration for using with the staging and production routes.
+
+You can also see that they’re embedded with user_key authentication mechanism.
+
+Because we’ve selected APIcast self-managed at product settings, **we need to create openshift routes manually**.
+
+## About Passthrough Termination
+
+With passthrough termination, encrypted traffic is sent straight to the destination without the router providing TLS termination. Therefore no key or certificate is required.
+
+The destination pod is responsible for serving certificates for the traffic at the endpoint.
+
+**This is currently the only method that can support requiring client certificates (also known as two-way authentication).**
+
+![](/images/3scale-apicast-mtls-workshop/16cs.png)
+
+source:
+
+[https://docs.openshift.com/container-platform/3.11/architecture/networking/routes.html](https://docs.openshift.com/container-platform/3.11/architecture/networking/routes.html)
+
+## 17- Create openshift Passthrough routes
+
+```
+export OCP_DOMAIN=<your-domain-goes-here>
+export OCP_WILDCARD_DOMAIN=apps.$OCP_DOMAIN
+export API_SUBDOMAIN=openbanking
+
+# delete the previous route used for testing
+oc delete route apicast-staging-mtls -n $API_MANAGER_NS
+# create new ones
+oc create route passthrough $API_SUBDOMAIN-stg-mtls --service=apicast-staging-mtls --port=https --hostname=$API_SUBDOMAIN-stg.$OCP_WILDCARD_DOMAIN -n $API_MANAGER_NS
+oc create route passthrough $API_SUBDOMAIN-mtls --service=apicast-production-mtls --port=https --hostname=$API_SUBDOMAIN.$OCP_WILDCARD_DOMAIN -n $API_MANAGER_NS
+```
+
+## 18- Use cURL to check the STAGING route
+
+```
+export PROJECT_API=openbanking
+# PS. these routes are exposed at https schema.
+export APP_STG_ROUTE=https://$(oc get routes -n $API_MANAGER_NS | grep $PROJECT_API-stg-mtls | awk '{print $2;}')
+export APP_PLAN_USER_KEY=9133267014780fa70f0954eb89b3e9a4 # provided by 3scale application
+export API_MANAGER_DEBUG_TOKEN=8c1673eb8a715f98b8fcbf328330f82310556353007b6bf8ceea9492e6eeef34
+
+# 4.1.26.3.1. Verifying policy functionality
+# 1) curl https://api-3scale-apicast-staging.$WILDCARD_DOMAIN\?user_key\=[Your_user_key] -v --cacert ca/certs/ca.crt --cert ca/certs/client.crt --key ca/keys/client.key
+# 2) curl https://api-3scale-apicast-staging.$WILDCARD_DOMAIN\?user_key\=[Your_user_key] -v --cacert ca/certs/ca.crt --cert ca/certs/server.crt --key ca/keys/server.key
+# 3) curl https://api-3scale-apicast-staging.$WILDCARD_DOMAIN\?user_key\=[Your_user_key] -v --cacert ca/certs/ca.crt
+
+# HTTP/2 200
+curl -k -vvv \
+-H 'Content-Type: application/json' \
+-H "X-3scale-debug: $API_MANAGER_DEBUG_TOKEN" \
+-X GET "$APP_STG_ROUTE/api/v1/product?user_key=$APP_PLAN_USER_KEY" \
+--cacert ssl/root-ca/certs/ca.crt \
+--cert ssl/client/certs/client.crt \
+--key ssl/client/private/client.key
+
+# HTTP/2 200
+curl -k -vvv \
+-H 'Content-Type: application/json' \
+-H "X-3scale-debug: $API_MANAGER_DEBUG_TOKEN" \
+-X GET "$APP_STG_ROUTE/api/v1/product?user_key=$APP_PLAN_USER_KEY" \
+--cacert ssl/root-ca/certs/ca.crt \
+--cert ssl/server/certs/server.crt \
+--key ssl/server/private/server.key
+
+# HTTP/2 400
+curl -k -vvv \
+-H 'Content-Type: application/json' \
+-H "X-3scale-debug: $API_MANAGER_DEBUG_TOKEN" \
+-X GET "$APP_STG_ROUTE/api/v1/product?user_key=$APP_PLAN_USER_KEY" \
+--cacert ssl/root-ca/certs/ca.crt
+# Invalid certificate verification context
+# 2021/10/20 18:49:24 [debug] 20#20: *215 ctx.lua:44: validate_cert(): OpenSSL cert validation err: no cert set for us to verify, requestID=7fe7a5a7bb56bebea4015dc2b8af7749
+```
+
+## 19- Use cURL to check the PRODUCTION route
+
+```
+export PROJECT_API=openbanking
+# PS. these routes are exposed at https schema.
+export APP_PRD_ROUTE=https://$(oc get routes -n $API_MANAGER_NS | grep $PROJECT_API-mtls | awk '{print $2;}')
+export APP_PLAN_USER_KEY=9133267014780fa70f0954eb89b3e9a4 # provided by 3scale application
+export API_MANAGER_DEBUG_TOKEN=8c1673eb8a715f98b8fcbf328330f82310556353007b6bf8ceea9492e6eeef34
+
+# 4.1.26.3.1. Verifying policy functionality
+# 1) curl https://api-3scale-apicast-staging.$WILDCARD_DOMAIN\?user_key\=[Your_user_key] -v --cacert ca/certs/ca.crt --cert ca/certs/client.crt --key ca/keys/client.key
+# 2) curl https://api-3scale-apicast-staging.$WILDCARD_DOMAIN\?user_key\=[Your_user_key] -v --cacert ca/certs/ca.crt --cert ca/certs/server.crt --key ca/keys/server.key
+# 3) curl https://api-3scale-apicast-staging.$WILDCARD_DOMAIN\?user_key\=[Your_user_key] -v --cacert ca/certs/ca.crt
+
+# HTTP/2 200
+curl -k -vvv \
+-H 'Content-Type: application/json' \
+-H "X-3scale-debug: $API_MANAGER_DEBUG_TOKEN" \
+-X GET "$APP_PRD_ROUTE/api/v1/product?user_key=$APP_PLAN_USER_KEY" \
+--cacert ssl/root-ca/certs/ca.crt \
+--cert ssl/client/certs/client.crt \
+--key ssl/client/private/client.key
+
+# HTTP/2 200
+curl -k -vvv \
+-H 'Content-Type: application/json' \
+-H "X-3scale-debug: $API_MANAGER_DEBUG_TOKEN" \
+-X GET "$APP_PRD_ROUTE/api/v1/product?user_key=$APP_PLAN_USER_KEY" \
+--cacert ssl/root-ca/certs/ca.crt \
+--cert ssl/server/certs/server.crt \
+--key ssl/server/private/server.key
+
+# HTTP/2 400
+curl -k -vvv \
+-H 'Content-Type: application/json' \
+-H "X-3scale-debug: $API_MANAGER_DEBUG_TOKEN" \
+-X GET "$APP_PRD_ROUTE/api/v1/product?user_key=$APP_PLAN_USER_KEY" \
+--cacert ssl/root-ca/certs/ca.crt
+# Invalid certificate verification context
+# 2021/10/20 18:49:24 [debug] 20#20: *215 ctx.lua:44: validate_cert(): OpenSSL cert validation err: no cert set for us to verify, requestID=7fe7a5a7bb56bebea4015dc2b8af7749
+```
+
+## 20- Finish
+
+And voilá! You have concluded the workshop.

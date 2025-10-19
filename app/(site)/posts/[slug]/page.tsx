@@ -147,7 +147,7 @@ export default async function PostPage({ params }: PostProps) {
             </AccordionItem>
           </Accordion>
         </div>
-        <article className="prose max-w-7xl dark:prose-invert hover:prose-a:text-accent-foreground prose-a:prose-headings:mb-3 prose-a:prose-headings:mt-8 prose-a:prose-headings:font-heading prose-a:prose-headings:font-bold prose-a:prose-headings:leading-tight prose-a:prose-headings:no-underline lg:mr-auto lg:max-w-2xl">
+        <article className="prose max-w-7xl dark:prose-invert hover:prose-a:text-accent-foreground prose-a:prose-headings:mb-3 prose-a:prose-headings:mt-8 prose-a:prose-headings:font-heading prose-a:prose-headings:font-bold prose-a:prose-headings:leading-tight prose-a:prose-headings:no-underline lg:mr-8 lg:max-w-2xl">
           <h1 className="mb-2 font-heading">{post.title}</h1>
           {post.description && (
             <p className="mb-2 mt-0 text-xl text-slate-700 dark:text-slate-200">{post.description}</p>
@@ -162,10 +162,14 @@ export default async function PostPage({ params }: PostProps) {
           <hr className="my-4" />
           <div className="flex flex-row items-center justify-between">
             {post.tags && (
-              <ul className="m-0 list-none space-x-2 p-0 text-sm text-muted-foreground">
+              <ul className="m-0 list-none space-x-2 p-0 text-sm" style={{ color: "hsl(33, 63%, 40%)" }}>
                 {post.tags.map((tag: string) => (
                   <li className="inline-block p-0" key={tag}>
-                    <Link href={`/tags/${tag}`} className="inline-block transition hover:text-muted-foreground/70">
+                    <Link
+                      href={`/tags/${tag}`}
+                      className="inline-block transition hover:opacity-70"
+                      style={{ color: "hsl(33, 63%, 40%)" }}
+                    >
                       {tag}
                     </Link>
                   </li>

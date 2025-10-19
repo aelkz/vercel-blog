@@ -15,14 +15,37 @@ const content: ContentNavItem[] = [
   },
 ];
 
+const radarsContent: ContentNavItem[] = [
+  {
+    title: "General Books",
+    href: "/general-books",
+    description: "General Books Radar",
+  },
+  {
+    title: "IT Books",
+    href: "/it-books",
+    description: "IT Books Radar",
+  },
+  {
+    title: "Technology Radar",
+    href: "/technology-radar",
+    description: "Technology Radar",
+  },
+  {
+    title: "AI Radar",
+    href: "/ai-radar",
+    description: "AI Radar",
+  },
+];
+
 export const navigationLinks: NavItem[] = [
   {
     title: "Blog",
     content,
   },
   {
-    title: "Thoughtworks",
-    href: "/projects",
+    title: "Radars",
+    content: radarsContent,
   },
   {
     title: "About",

@@ -115,4 +115,80 @@
   .dark .prose strong {
     color: hsl(33, 63%, 25%) !important;
   }
+
+  /* Justify paragraph text and reduce font size */
+  .prose p {
+    text-align: justify !important;
+    margin-bottom: 1rem !important;
+    font-size: 0.875rem !important; /* 14px -> 14px * 0.625 = 8.75px but using 0.875rem for better readability (14px) */
+  }
+
+  /* Remove centering from paragraphs - only center image captions */
+  .prose em {
+    text-align: inherit;
+  }
+
+  /* Reduce all prose text size */
+  .prose {
+    font-size: 0.75rem !important; /* Base size reduction from 1rem (16px) to 0.75rem (12px) */
+  }
+
+  /* Inline code styling - coffee theme colors and smaller size */
+  .prose code {
+    color: hsl(33, 63%, 40%) !important; /* A97125 - dark brown */
+    background-color: hsl(33, 30%, 76%) !important; /* D2C0AA - light beige */
+    padding: 0.125rem 0.25rem !important;
+    border-radius: 0.25rem !important;
+    font-size: 0.5rem !important; /* Even smaller - 8px */
+  }
+
+  .dark .prose code {
+    color: hsl(33, 63%, 40%) !important;
+    background-color: hsl(33, 30%, 76%) !important;
+  }
+
+  /* Code blocks styling - simple and clean */
+  .prose pre {
+    background-color: hsl(33, 30%, 76%) !important;
+    border: 1px solid hsl(42, 49%, 56%) !important;
+    padding: 1rem !important;
+    border-radius: 0.5rem !important;
+    overflow-x: auto !important;
+    margin: 1.5rem 0 !important;
+  }
+
+  .prose pre code {
+    color: hsl(33, 63%, 25%) !important; /* Dark brown text */
+    background-color: transparent !important;
+    font-size: 0.75rem !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    line-height: 1.5 !important;
+    white-space: pre !important;
+    display: block !important;
+  }
+
+  /* Link styling - coffee theme */
+  .prose a {
+    color: hsl(33, 63%, 40%) !important;
+    text-decoration: underline !important;
+  }
+
+  .prose a:hover {
+    color: hsl(42, 49%, 56%) !important;
+  }
+
+  .dark .prose a {
+    color: hsl(33, 63%, 40%) !important;
+  }
+
+  .dark .prose a:hover {
+    color: hsl(42, 49%, 56%) !important;
+  }
+
+  /* Remove image borders in posts */
+  .prose img {
+    border: none !important;
+  }
 }

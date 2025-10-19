@@ -25,7 +25,14 @@ export function Navbar() {
               <>
                 <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                  <ul
+                    className={cn(
+                      "grid w-[400px] gap-3 p-4",
+                      item.title === "Radars" || item.title === "Thoughtworks"
+                        ? "md:w-[300px] md:grid-cols-1 lg:w-[300px]"
+                        : "md:w-[500px] md:grid-cols-2 lg:w-[600px]"
+                    )}
+                  >
                     {item.content.map((subItem) => (
                       <ListItem
                         key={subItem.href.trim()}

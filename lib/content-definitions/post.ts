@@ -86,10 +86,15 @@ export const Post = defineDocumentType(() => ({
         // https://github.com/rehypejs/rehype-slug/blob/main/package.json#L36
         const slugger = new GithubSlugger();
 
+        // Remove code blocks first to avoid matching # inside them
+        const contentWithoutCodeBlocks = doc.body.raw
+          .replace(/```[\s\S]*?```/g, "") // Remove fenced code blocks
+          .replace(/`[^`]+`/g, ""); // Remove inline code
+
         // https://stackoverflow.com/a/70802303
         const regXHeader = /\n\n(?<flag>#{1,6})\s+(?<content>.+)/g;
 
-        const headings = Array.from(doc.body.raw.matchAll(regXHeader)).map(({ groups }) => {
+        const headings = Array.from(contentWithoutCodeBlocks.matchAll(regXHeader)).map(({ groups }) => {
           const flag = groups?.flag;
           const content = groups?.content;
           return {

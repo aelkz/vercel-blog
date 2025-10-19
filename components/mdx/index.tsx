@@ -41,11 +41,12 @@ const components = {
   h6: ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h6 className={`!text-[#A97125] [&_a]:!text-[#A97125] ${className || ""}`} {...props} />
   ),
-  img: ({ alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
-    <span className="my-6 block">
-      <img {...props} alt={alt} className="mx-auto h-auto max-w-full rounded-lg border-2 border-[#CA9F55] shadow-lg" />
-      {alt && <em className="mt-2 block text-center text-sm text-muted-foreground">{alt}</em>}
-    </span>
+  img: ({ alt, className, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    <img
+      {...props}
+      alt={alt}
+      className={className || "m-0 mx-auto block h-auto max-w-full rounded-lg border-2 border-[#CA9F55] p-0 shadow-lg"}
+    />
   ),
 };
 

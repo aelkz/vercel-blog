@@ -1,0 +1,52 @@
+---
+title: "A importância da segurança para microsserviços 🇧🇷"
+publishedDate: "2019-12-06"
+lastUpdatedDate: "2019-12-06"
+tags:
+  - technology
+description: "This article was also published..."
+status: published
+---
+
+This article was also published at:
+[https://imasters.com.br/apis-microsservicos/a-importancia-da-seguranca-para-microsservicos](https://imasters.com.br/apis-microsservicos/a-importancia-da-seguranca-para-microsservicos)
+
+<video autoPlay loop muted playsInline style={{ width: "100%" }}>
+  <source src="/images/a-importancia-da-seguranca-para-microsservicos/video.mp4" type="video/mp4" />
+</video>
+
+**Introdução**
+
+**A** evolução da tecnologia e a transformação digital trouxeram para o dia a dia de muitas empresas diversos termos e conceitos novos. Dentro deste contexto, se tornou comum a utilização da palavra microsserviços, uma abordagem moderna de arquitetura de software para criação de aplicações.
+
+Nesta estrutura, um determinado projeto é decomposto em aplicações menores, cada uma com uma única responsabilidade (alta coesão). Cada uma delas participa como uma peça de um grande motor e pode ser criada e implantada de forma independente (baixo acoplamento), o que significa que cada serviço individual funciona e pode ser substituído de forma que o impacto para o negócio seja o menor possível.
+
+Na prática, isto possibilita executar cargas de trabalho mais pesadas, permitindo a integração e entrega contínua de aplicações grandes e complexas. Também permite que uma organização, independente de seu porte, evolua sua pilha de tecnologia de forma gradual. A arquitetura de microsserviços ainda melhora o isolamento de falhas e facilita o escalonamento de processos de forma elástica.
+
+#### Desafios dos microsserviços
+
+Como toda tecnologia, no entanto, os microsserviços também trazem uma série de desafios. Sua utilização requer um alto nível de automação e uma coordenação maior entre as equipes de desenvolvimento, segurança e infraestrutura (DevSecOps).
+
+Outro tema importante que precisa ser observado é a questão da segurança. Antes da implementação deste tipo de abordagem, é necessário compreender alguns pontos e conhecer as melhores estratégias/ferramentas para garantir que a proteção dos microsserviços seja configurada de maneira apropriada.
+
+Apesar de ser mais segura do que estruturas monolíticas tradicionais, a arquitetura em microsserviços apresenta algumas exigências. Cada microsserviço, por exemplo, precisa se adequar a um escopo de segurança, para que cada requisição recebida seja tratada adequadamente, provendo o retorno esperado quando houver uma relação de confiança e retornando uma mensagem de erro devidamente tratada quando o consumidor não estiver devidamente autorizado.
+
+#### Framework
+
+Para lidar com estas questões, os desenvolvedores devem se preocupar com qual framework base será utilizado e quais dependências ou bibliotecas serão empregadas para orquestrar os mecanismos de segurança. Basicamente, trabalhar com uma arquitetura baseada em microsserviços, identidade de usuário e controle de acesso de forma distribuída e detalhada é algo que precisa ser cuidadosamente projetado.
+
+Neste processo, existem diversas ferramentas que podem ser utilizadas para administrar os negócios com segurança, evitando o uso de soluções caseiras e protegendo os serviços utilizando um gateway de API, impedindo que os microsserviços sejam expostos à rede pública. O uso de um gateway de API também fornece controle de acesso, monetização e análises por meio de gráficos de consumo.
+
+Testes realizados com protocolos como o OpenID Connect – camada de autenticação sobre o framework OAuth 2.0, um padrão aberto que fornece uma especificação para controle de autenticação e autorização –, com o suporte de tecnologias open source, como o Red Hat Single Sign-On, FUSE e 3scale, por exemplo, indicam eficiência para aumentar a proteção de microsserviços.
+
+#### Conceitos
+
+O conceito de Single Sign On (SSO – Login Único) é a habilidade que os usuários possuem para realizar autenticação única e transparente do aplicativo da web. O Red Hat Single Sign-On atua em cluster promovendo o controle de autenticação e autorização pela utilização de um subsistema de cache conhecido como Infinispan. Isto permite que aplicativos em servidores múltiplos compartilhem a informação, além de fazer com que ela se torne resistente à falha de um dos hosts.
+
+O mecanismo de SSO é configurado como um módulo de Serviço de Autenticação e Autorização Java, ou JAAS (pronunciado “Jazz”), que é a implementação Java da estrutura de segurança de informações padrão do Pluggable Authentication Module (PAM). Este módulo por sua vez, é conectado a um Security Domain, que é configurado ao nível do servidor ou grupo de servidores em uma arquitetura baseada em JBoss.
+
+Já o FUSE é uma plataforma de integração nativa em cloud, parte de uma solução de integração ágil. A abordagem distribuída desta solução permite às equipes implantar serviços integrados sempre que necessário. A arquitetura baseada em containers e centrada em APIs desacopla os serviços para que eles sejam criados, ampliados e implantados de maneira independente.
+
+O FUSE suporta o uso de EIP (Enterprise Integration Patterns) que compreende um catálogo de padrões de design para o desenvolvimento e integração entre aplicações. Por sua vez, o 3scale API Management facilita o gerenciamento de APIs. Ele permite compartilhar, proteger, distribuir, controlar e monetizar as APIs do negócio em uma plataforma de infraestrutura criada para oferecer desempenho, controle do cliente e crescimento futuro.
+
+Ao considerar todas as variáveis dos microsserviços e apostar nesses tipos de ferramentas em conjunto, o resultado para as empresas será uma solução de arquitetura compatível com a implantação de código ponta a ponta e que incentiva a comunicação e a colaboração entre as equipes de entrega. A utilização de padrões devidamente suportados promove, além da segurança, maior eficiência, produtividade e agilidade, trazendo controle e tranquilidade para o time de desenvolvimento.

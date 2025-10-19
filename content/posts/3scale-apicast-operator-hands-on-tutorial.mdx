@@ -1,0 +1,235 @@
+---
+title: "3scale APIcast operator hands-on tutorial"
+publishedDate: "2022-04-28"
+lastUpdatedDate: "2022-04-28"
+tags:
+  - technology
+description: "Deploy new 3Scale APIcast instances using Red Hat's OpenShift Container Platform with the APIcast operator."
+status: published
+---
+
+In this tutorial, you will be able to deploy new 3Scale APIcast instances using Red Hat’s OpenShift Container Platform.
+
+**APICast** is the gateway used by 3Scale. It is possible to implement N gateways to meet your business needs. [1]
+
+#### What is an operator?
+
+Red Hat® OpenShift® Operators automate the creation, configuration, and management of instances of Kubernetes-native applications. Operators provide automation at every level of the stack—from managing the parts that make up the platform all the way to applications that are provided as a managed service. [2]
+
+# APIcast Operator
+
+Hand-on 3scale APIcast installation using OpenShift Operator
+
+**Red Hat Integration – 3scale APIcast gateway**
+
+0.5.2+0.1649688685.p provided by Red Hat
+
+**3scale 2.11**
+
+## Create new Access Tokens at 3scale admin portal
+
+Navigate to the admin portal of 3Scale.
+
+Go over Account Settings -> Personal -> Tokens
+
+Then, create a new access token for each APIcast instance.
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/01.png)
+
+### staging APIcast
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/02.png)
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/03.png)
+
+- name: apicast-staging-token
+
+- scopes: Account Management API
+
+- Permission: read-only
+
+- generated token: ef96ee0cfe89d242f00eecd5657089fabe4688e27943fc6e5fe569fb93f461ce
+
+### production APIcast
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/04.png)
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/05.png)
+
+- name: apicast-production-token
+
+- scopes: Account Management API
+
+- Permission: read-only
+
+- generated token: b473933a0cc128754a098af7694641a66c0cc64771dca0e0cf42e6a2d181e0b2
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/06.png)
+
+references:
+
+[https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.11/html-single/installing_3scale#deploying-apicast-templates-on-existing-cluster](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.11/html-single/installing_3scale#deploying-apicast-templates-on-existing-cluster)
+
+[https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.11/html-single/admin_portal_guide#creating-access-tokens](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.11/html-single/admin_portal_guide#creating-access-tokens)
+
+[https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.11/html-single/administering_the_api_gateway#apicast_environment_variables](https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.11/html-single/administering_the_api_gateway#apicast_environment_variables)
+
+## Deploy APICast
+
+```
+oc login --token=sha256~ooooo --server=https://api.ooooo.com:6443
+
+oc new-project 3scale-apicast --description="3scale-apicast-demo" --display-name="3scale-apicast"
+
+export APICAST_NS=3scale-apicast
+export MANAGER_NS=3scale
+export SYSTEM_PROVIDER_URL=$(oc get route | grep system-provider | awk '{print $2}')
+export STG_TOKEN=ef96ee0cfe89d242f00eecd5657089fabe4688e27943fc6e5fe569fb93f461ce
+export PRD_TOKEN=b473933a0cc128754a098af7694641a66c0cc64771dca0e0cf42e6a2d181e0b2
+
+oc create secret generic admin-apicast-staging --from-literal=AdminPortalURL=https://$STG_TOKEN@$SYSTEM_PROVIDER_URL -n $APICAST_NS
+oc create secret generic admin-apicast-production --from-literal=AdminPortalURL=https://$PRD_TOKEN@$SYSTEM_PROVIDER_URL -n $APICAST_NS
+
+oc get secret -n $APICAST_NS | grep admin
+
+-- optional (if using embedded configuration e.g. policies)
+oc create -f apicast-staging-config-secret.yaml -n $PROJECT_NS
+oc create -f apicast-production-config-secret.yaml -n $PROJECT_NS
+```
+
+Go over Operators -> OperatorHub and **install** the APIcast operator.
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/07.png)
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/08.png)
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/09.png)
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/10.png)
+
+### apicast-staging deployment
+
+Go over APIcast tab at the previously installed APIcast operator and click on Create APIcast.
+
+Select YAML view in Configure via: and paste the following yaml to create the APIcast staging gateway:
+
+```
+apiVersion: apps.3scale.net/v1alpha1
+kind: APIcast
+metadata:
+  name: staging
+  namespace: 3scale-apicast
+  labels:
+    app: apicast-staging
+    staging: 'true'
+spec:
+  logLevel: debug
+  responseCodesIncluded: true
+  extendedMetrics: true
+  cacheConfigurationSeconds: 0
+  deploymentEnvironment: staging
+  adminPortalCredentialsRef:
+    name: admin-apicast-staging
+  loadServicesWhenNeeded: false
+  workers: 1
+  oidcLogLevel: info
+  replicas: 1
+  managementAPIScope: status
+  configurationLoadMode: lazy
+  httpsVerifyDepth: 1
+```
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/11.png)
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/12.png)
+
+### apicast-production deployment
+
+Repeat the same steps for apicast-production gateway using the following example:
+
+```
+apiVersion: apps.3scale.net/v1alpha1
+kind: APIcast
+metadata:
+  name: production
+  namespace: 3scale-apicast
+  labels:
+    app: apicast-production
+    production: 'true'
+spec:
+  logLevel: debug
+  responseCodesIncluded: true
+  extendedMetrics: true
+  cacheConfigurationSeconds: 300
+  deploymentEnvironment: production
+  adminPortalCredentialsRef:
+    name: admin-apicast-production
+  loadServicesWhenNeeded: false
+  workers: 1
+  oidcLogLevel: error
+  replicas: 1
+  managementAPIScope: status
+  configurationLoadMode: boot
+  httpsVerifyDepth: 1
+```
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/19.png)
+
+PS. If you remove the APIcast object from the APICast operator, the secret admin-apicast-\* will be removed from the namespace.
+
+## Create APICast staging and production routes
+
+Go over admin portal at 3Scale and create a new API Product using the following routes for staging and production:
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/17.png)
+
+### staging route
+
+```
+export WILDCARD_DOMAIN=apps.wkshop.rhbr-lab.com
+export APICAST_NS=3scale-apicast
+oc delete route api-apicast-staging -n $APICAST_NS
+oc create route edge api-apicast-staging --service=apicast-staging --port=proxy --hostname=api-apicast-stg.$WILDCARD_DOMAIN --insecure-policy=Allow --wildcard-policy=None -n $APICAST_NS
+```
+
+### production route
+
+```
+export WILDCARD_DOMAIN=apps.wkshop.rhbr-lab.com
+export APICAST_NS=3scale-apicast
+oc delete route api-apicast-production -n $APICAST_NS
+oc create route edge api-apicast-production --service=apicast-production --port=proxy --hostname=api-apicast.$WILDCARD_DOMAIN --insecure-policy=Allow --wildcard-policy=None -n $APICAST_NS
+```
+
+### Test: apicast routes
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/18.png)
+
+You can open the previously created routes in the browser. You should see the message Authentication parameters missing
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/20.png)
+
+### Optional: Operator route management
+
+PS. These routes can be created using a tls secret at APICast operator configuration. Using this approach, these routes become managed by the operator itself.
+
+![](/images/3scale-apicast-operator-hands-on-tutorial/16.png)
+
+Example:
+
+```
+apiVersion: apps.3scale.net/v1alpha1
+kind: APIcast
+..
+exposedHost:
+    host: api-apicast-stg.apps.wkshop.rhbr-lab.com
+    tls:
+      - secretName: api-tls-secret
+        hosts:
+          - api-apicast-stg.apps.wkshop.rhbr-lab.com
+..
+```
+
+1- [https://github.com/3scale/APIcast](https://github.com/3scale/APIcast)
+
+2- [https://www.redhat.com/en/technologies/cloud-computing/openshift/what-are-openshift-operators#:~:text=Red%20Hat%C2%AE%20OpenShift%C2%AE,provided%20as%20a%20managed%20service](https://www.redhat.com/en/technologies/cloud-computing/openshift/what-are-openshift-operators#:~:text=Red%20Hat%C2%AE%20OpenShift%C2%AE,provided%20as%20a%20managed%20service).

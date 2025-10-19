@@ -1,0 +1,80 @@
+---
+title: "Deleting namespaces in zombie state (Terminating status) OCP4.x"
+publishedDate: "2020-01-23"
+lastUpdatedDate: "2020-01-23"
+tags:
+  - technology
+description: "How to delete namespaces stuck in terminating status on Openshift 4.x by removing finalizers from project definitions."
+status: published
+---
+
+### Project cannot be deleted because of the finalizer kubernetes not being removed from the project definition.
+
+(working with Openshift 4.x)
+
+### 1- Create a file from all namespaces in terminating status
+
+```
+$ oc get projects |grep Terminating |awk '{print $1}' > terminating-ns
+```
+
+### 2- Create a shell script create-json.sh to iterate through all namespaces to create a json file
+
+```
+#!/bin/bash
+while read p; do
+echo $p
+oc get project $p -o json |grep -v "kubernetes" > $p.json
+
+done <$filename
+```
+
+### 3- Run the script
+
+```
+$ chmod +x create-json.sh
+$ ./create-json.sh
+```
+
+### 4- Replace each JSON file with correct metadata values according to Openshift 4.2
+
+Where (this can be improved with jq at create-json.sh script):
+
+"kind": "Project" –> "kind": "Namespace"
+
+apiVersion: "project.openshift.io/v1" –> apiVersion: "v1"
+
+### 5- Create a proxy for OCP API
+
+```
+oc proxy --port=8080 &
+```
+
+### 6- Create a shell script update-ns.sh to update namespace definition with the json file, so the namespace can finally be purged from cluster
+
+```
+#!/bin/bash
+filename='terminating-ns'
+while read p; do
+curl -k -H "Content-Type: application/json" -X PUT --data-binary @$p.json localhost:8080/api/v1/namespaces/$p/finalize;
+done <$filename
+```
+
+### 7- Run the script
+
+```
+$ chmod +x update-ns.sh
+$ ./update-ns.sh
+```
+
+### 8- Check if the namespace was killed
+
+```
+$ oc get projects |grep Terminating
+```
+
+Credits (kubernetes based):
+
+[https://stackoverflow.com/questions/58638297/project-deletion-struck-in-terminating](https://stackoverflow.com/questions/58638297/project-deletion-struck-in-terminating)
+
+[https://github.com/openshift/origin/issues/18125https://stackoverflow.com/questions/58638297/project-deletion-struck-in-terminating](https://github.com/openshift/origin/issues/18125https://stackoverflow.com/questions/58638297/project-deletion-struck-in-terminating)

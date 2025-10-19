@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SocialProfile } from "@/types";
 import { Linkedin, Mail } from "lucide-react";
-import { siFacebook, siYcombinator } from "simple-icons";
+import { siFacebook } from "simple-icons";
 
 import { Button, ButtonProps } from "@/components/ui/button";
 import {
@@ -53,24 +53,6 @@ export const SocialShare = ({ url, text }: SocialShareProps) => {
           >
             <Linkedin className="mr-2 h-3 w-3" />
             LinkedIn
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link
-            href={`https://news.ycombinator.com/submitlink?u=${encodedUrl}`}
-            rel="noreferrer noopener"
-            target="_blank"
-          >
-            <svg
-              role="img"
-              viewBox="0 0 24 24"
-              className="mr-2 h-3 w-3"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d={siYcombinator.path}></path>
-            </svg>
-            Hacker News
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
