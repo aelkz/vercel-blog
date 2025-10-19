@@ -247,8 +247,8 @@ status: published
 
 if __name__ == "__main__":
     # File paths
-    import_dir = "/Users/rabreu/Documents/_personal/_blog/vercel-blog/_to-import"
-    output_dir = "/Users/rabreu/Documents/_personal/_blog/vercel-blog/content/posts"
+    import_dir = "/../vercel-blog/_to-import"
+    output_dir = "/../vercel-blog/content/posts"
 
     files = [
         "3Scale APICast mTLS workshop - coffeehack.io.html",
