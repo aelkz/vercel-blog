@@ -132,11 +132,13 @@ For this lab I have configure static-ip address for the server running libvirt.
 
 Navigate through /etc/sysconfig/network-scripts
 
-Edit your wireless interface. It will be something like ifcg-{SSID}
+Edit your wireless interface. It will be something like `ifcfg-{SSID}`
 
-To keep a static-ip address, you’ll need to set this configuration like this:
+To keep a static-ip address, you'll need to set this configuration like this:
 
-$ sudo vim /etc/sysconfig/network-scripts/ifcfg-`<SSID>`
+```bash
+$ sudo vim /etc/sysconfig/network-scripts/ifcfg-<SSID>
+```
 
 ```
 HWADDR=XX:xx:XX:xx:XX:xx
@@ -783,7 +785,11 @@ You should see your application running:
 
 Test your application, opening the web browser: http://myapp-demo.apps.arekkusu.io or via curl:
 
-curl -s -o /dev/null -w "%{http_code}" http://myapp-demo.apps.arekkusu.io and check if it returns status code 200.
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://myapp-demo.apps.arekkusu.io
+```
+
+Check if it returns status code 200.
 
 ### 6.2 Second test: access custom addresses inside myapp’s POD.
 

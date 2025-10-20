@@ -30,8 +30,8 @@ export function SocialButton({ platform, ...props }: SocialButtonProps) {
       return <Linkedin className="h-5 w-5" />;
     }
 
-    const icon: SimpleIcon = Icons[platformIconIdentifier as keyof typeof Icons];
-    if (!icon) {
+    const icon = Icons[platformIconIdentifier as keyof typeof Icons];
+    if (!icon || typeof icon !== "object" || !("svg" in icon)) {
       return null;
     }
     return (

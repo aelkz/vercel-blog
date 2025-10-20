@@ -1,7 +1,19 @@
-import { allPosts } from "contentlayer/generated";
+import fs from "fs";
+import path from "path";
 import RSS from "rss";
 
 import siteMetadata, { BASE_URL, defaultAuthor } from "@/lib/metadata";
+
+// Read generated posts data from .contentlayer directory to avoid bundling contentlayer
+function getAllPosts() {
+  const contentlayerPath = path.join(process.cwd(), ".contentlayer/generated");
+  const postsIndexPath = path.join(contentlayerPath, "Post/_index.json");
+  const postsData = JSON.parse(fs.readFileSync(postsIndexPath, "utf-8"));
+  return postsData.map((fileName: string) => {
+    const postPath = path.join(contentlayerPath, "Post", fileName);
+    return JSON.parse(fs.readFileSync(postPath, "utf-8"));
+  });
+}
 
 export async function GET(request: Request) {
   const feed = new RSS({
@@ -14,9 +26,11 @@ export async function GET(request: Request) {
     pubDate: new Date(),
   });
 
+  const allPosts = getAllPosts();
+
   allPosts
-    .filter((post) => post.status === "published")
-    .map((post) => {
+    .filter((post: any) => post.status === "published")
+    .map((post: any) => {
       feed.item({
         title: post.title,
         guid: `${BASE_URL}/posts/${post.slug}`,
@@ -24,7 +38,7 @@ export async function GET(request: Request) {
         date: post.lastUpdatedDate as string,
         description: post.description || "",
         author: defaultAuthor.name,
-        categories: post?.tags?.map((tag) => tag) || [],
+        categories: post?.tags?.map((tag: string) => tag) || [],
       });
     });
 

@@ -2,26 +2,10 @@
 import { defineDocumentType } from "contentlayer/source-files";
 import GithubSlugger from "github-slugger";
 
+import { tagOptions } from "../tag-options";
 import { calculateReadingTime } from "../utils";
 import { Author } from "./author";
 import { Series } from "./series";
-
-export const tagOptions = [
-  "starter",
-  "development",
-  "docs",
-  "freelancing",
-  "opinion",
-  "jamstack",
-  "frontend",
-  "development",
-  "javascript",
-  "typescript",
-  "react",
-  "nextjs",
-  "gatsby",
-  "tailwindcss",
-];
 
 export const Post = defineDocumentType(() => ({
   name: "Post",
