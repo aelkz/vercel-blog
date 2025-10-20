@@ -246,14 +246,16 @@ status: published
     return slug
 
 if __name__ == "__main__":
+    # Get the script directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+
     # File paths
-    import_dir = "/../vercel-blog/_to-import"
-    output_dir = "/../vercel-blog/content/posts"
+    import_dir = os.path.join(project_root, "_temp")
+    output_dir = os.path.join(project_root, "content/posts")
 
     files = [
-        "3Scale APICast mTLS workshop - coffeehack.io.html",
-        "3Scale 2.12 monitoring – Definitive walkthrough guide! - coffeehack.io.html",
-        "Microservices Security - coffeehack.io.html"
+        "some-page-to-be-converted.html",
     ]
 
     created_files = []
@@ -266,6 +268,8 @@ if __name__ == "__main__":
                 created_files.append((filename, slug))
             except Exception as e:
                 print(f"✗ Error processing {filename}: {str(e)}")
+                import traceback
+                traceback.print_exc()
         else:
             print(f"✗ File not found: {file_path}")
 
