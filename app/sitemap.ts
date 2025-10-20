@@ -9,21 +9,13 @@ import { tagOptions } from "@/lib/tag-options";
 function getContentlayerData() {
   const contentlayerPath = path.join(process.cwd(), ".contentlayer/generated");
 
-  // Read posts
+  // Read posts - _index.json contains full post objects, not filenames
   const postsIndexPath = path.join(contentlayerPath, "Post/_index.json");
-  const postsData = JSON.parse(fs.readFileSync(postsIndexPath, "utf-8"));
-  const allPosts = postsData.map((fileName: string) => {
-    const postPath = path.join(contentlayerPath, "Post", fileName);
-    return JSON.parse(fs.readFileSync(postPath, "utf-8"));
-  });
+  const allPosts = JSON.parse(fs.readFileSync(postsIndexPath, "utf-8"));
 
-  // Read pages
+  // Read pages - _index.json contains full page objects, not filenames
   const pagesIndexPath = path.join(contentlayerPath, "Page/_index.json");
-  const pagesData = JSON.parse(fs.readFileSync(pagesIndexPath, "utf-8"));
-  const allPages = pagesData.map((fileName: string) => {
-    const pagePath = path.join(contentlayerPath, "Page", fileName);
-    return JSON.parse(fs.readFileSync(pagePath, "utf-8"));
-  });
+  const allPages = JSON.parse(fs.readFileSync(pagesIndexPath, "utf-8"));
 
   return { allPosts, allPages };
 }
@@ -44,7 +36,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const pages = allPages
     .filter((page: any) => page.status === "published")
     .map((page: any) => ({
-      url: `${BASE_URL}/${page.slug.split("/pages")}`,
+      url: `${BASE_URL}/${page.slug}`,
       lastModified: page.lastUpdatedDate,
     }));
   return [

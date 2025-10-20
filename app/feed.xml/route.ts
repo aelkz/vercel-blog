@@ -8,11 +8,8 @@ import siteMetadata, { BASE_URL, defaultAuthor } from "@/lib/metadata";
 function getAllPosts() {
   const contentlayerPath = path.join(process.cwd(), ".contentlayer/generated");
   const postsIndexPath = path.join(contentlayerPath, "Post/_index.json");
-  const postsData = JSON.parse(fs.readFileSync(postsIndexPath, "utf-8"));
-  return postsData.map((fileName: string) => {
-    const postPath = path.join(contentlayerPath, "Post", fileName);
-    return JSON.parse(fs.readFileSync(postPath, "utf-8"));
-  });
+  // _index.json contains full post objects, not filenames
+  return JSON.parse(fs.readFileSync(postsIndexPath, "utf-8"));
 }
 
 export async function GET(request: Request) {
