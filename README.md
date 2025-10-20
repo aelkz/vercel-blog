@@ -255,6 +255,21 @@ EMAIL_GROUP_ID=
 - `pnpm lint` - Run ESLint
 - `pnpm format` - Format code with Prettier
 
+### Clean Restart
+
+If you encounter caching issues or corrupted build files, use this command to clean all generated files and restart the dev server:
+
+```bash
+rm -rf .next .contentlayer && pnpm dev
+```
+
+This removes:
+
+- `.next` - Next.js build cache and dev server files
+- `.contentlayer` - Contentlayer generated TypeScript and JSON files
+
+Both directories are automatically regenerated when the dev server starts.
+
 ## Tips for Success
 
 1. **Start Small** - Configure metadata first, then customize one section at a time
@@ -292,8 +307,9 @@ import { CustomComponent } from "@/components/custom-component";
 - **"Unexpected identifier 'assert'" error**: You're likely using Node.js v24. Switch to Node.js v20 LTS:
   - With nvm: `nvm install 20 && nvm use 20`
   - Or download Node.js v20 from https://nodejs.org/
+- **"Cannot find module 'middleware-manifest.json'" error**: Your `.next` directory is corrupted. Run a clean restart (see [Available Scripts](#available-scripts))
 - Ensure all dependencies are installed: `pnpm install`
-- Clear `.contentlayer` cache: `rm -rf .contentlayer`
+- Try a clean restart: `rm -rf .next .contentlayer && pnpm dev`
 - Check that all frontmatter fields are valid
 
 ### Content Not Showing
