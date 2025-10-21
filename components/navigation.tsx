@@ -86,7 +86,7 @@ export function Navigation() {
                 <span className="font-heading text-lg font-bold leading-tight text-[#7A5419]">
                   {defaultAuthor.siteName}
                 </span>
-                <span className="whitespace-nowrap text-xs">
+                <span className="hidden whitespace-nowrap text-xs sm:inline">
                   <span className="font-semibold text-foreground/60">{defaultAuthor.jobTitle}</span>
                 </span>
               </Link>
