@@ -37,7 +37,7 @@ const siteMetadata: SiteMetaData = {
   newsletterProvider: "mailerlite",
   newsletterUrl: "https://",
   showNewsletter: false,
-  analyticsProvider: "umami",
+  analyticsProvider: "vercel",
   defaultTheme: "dark",
   activeAnnouncement: false,
   announcement: {
