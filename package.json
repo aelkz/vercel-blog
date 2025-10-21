@@ -8,7 +8,7 @@
     "url": "https://stackoverflow.com/users/2730735/aelkz?tab=profile"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22.11.0"
   },
   "scripts": {
     "dev": "NODE_OPTIONS='--no-experimental-detect-module' next dev",
@@ -17,7 +17,7 @@
     "preview": "NODE_OPTIONS='--no-experimental-detect-module' next build && next start",
     "lint": "next lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,mdx,js,jsx,json,mjs}\"",
-    "prepare": "husky install"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.1",
@@ -84,6 +84,9 @@
     "typescript": "5.9.3"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ],
     "overrides": {
       "@opentelemetry/api": "1.4.1",
       "@opentelemetry/core": "^1.15.1",
