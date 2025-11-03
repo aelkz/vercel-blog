@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { LocationImage } from "@/components/location-image";
+import { PersonalityTypeImage } from "@/components/personality-type-image";
 
 type CardProps = React.ComponentProps<typeof Card>;
 
@@ -110,6 +111,19 @@ export function Sidebar({ className, ...props }: CardProps) {
             </Link>
           </Button>
         </CardFooter>
+      </Card>
+
+      <Card className={cn("mt-4", className)} {...props}>
+        <CardHeader>
+          <CardTitle>Personality Type</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <PersonalityTypeImage
+            src="/images/about/personality-type.png"
+            alt="ISTJ-A Personality Type"
+            personalityType="ISTJ-A"
+          />
+        </CardContent>
       </Card>
 
       <Card className={cn("mt-4 bg-[#E6E5DF]", className)} {...props}>
