@@ -51,27 +51,30 @@ export function Sidebar({ className, ...props }: CardProps) {
           <CardTitle>What am I currently reading?</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-1">
-          {books.slice(0, siteMetadata.booksOnHomePage).map((book) => (
-            <Link
-              href={book.href}
-              target="_blank"
-              key={book.title.trim()}
-              className="flex items-center rounded-md px-2 py-1 transition-colors hover:bg-[#ddd2c5]"
-            >
-              <Book />
-              <div className="ml-2 mr-auto">
-                <p className="text-sm font-medium leading-none">{book.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{book.author}</p>
-              </div>
-              <Image
-                src={book.mediaSrc}
-                alt={book.title}
-                width={56}
-                height={56}
-                className="h-16 w-16 rounded-md object-cover"
-              />
-            </Link>
-          ))}
+          {books
+            .filter((book) => book.inProgress)
+            .slice(0, siteMetadata.booksOnHomePage)
+            .map((book) => (
+              <Link
+                href={book.href}
+                target="_blank"
+                key={book.title.trim()}
+                className="flex items-center rounded-md px-2 py-1 transition-colors hover:bg-[#ddd2c5]"
+              >
+                <Book />
+                <div className="ml-2 mr-auto">
+                  <p className="text-sm font-medium leading-none">{book.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{book.author}</p>
+                </div>
+                <Image
+                  src={book.mediaSrc}
+                  alt={book.title}
+                  width={56}
+                  height={56}
+                  className="h-16 w-16 rounded-md object-cover"
+                />
+              </Link>
+            ))}
         </CardContent>
       </Card>
 
