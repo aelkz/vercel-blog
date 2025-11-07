@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
-import { aiRadar, RadarConfig, RadarEntry, technologyRadar } from "@/lib/radar-data";
+import { aiRadar } from "@/lib/ai-radar-data";
+import { RadarConfig, RadarEntry } from "@/lib/radar-types";
+import { technologyRadar } from "@/lib/technology-radar-data";
 
 type RadarType = "technology" | "ai";
 
@@ -17,6 +19,23 @@ export default function RadarAdminPage() {
 
   // Handle radar switch
   const handleRadarSwitch = (type: RadarType) => {
+    // Don't switch if already on that radar
+    if (type === selectedRadar) return;
+
+    // Check if there are unsaved changes
+    const originalEntries = selectedRadar === "technology" ? technologyRadar.entries : aiRadar.entries;
+    const hasChanges = JSON.stringify(entries) !== JSON.stringify(originalEntries);
+
+    if (hasChanges) {
+      const confirmSwitch = confirm(
+        "You have unsaved changes! Switching radars will discard your current work.\n\nMake sure to export your changes to clipboard first.\n\nAre you sure you want to switch?"
+      );
+
+      if (!confirmSwitch) {
+        return;
+      }
+    }
+
     setSelectedRadar(type);
     setEntries(type === "technology" ? technologyRadar.entries : aiRadar.entries);
     setEditingEntry(null);

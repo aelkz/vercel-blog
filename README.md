@@ -48,7 +48,11 @@ Edit these files with your personal information:
 
 5. **`lib/projects-data.ts`** - Your projects (for `/projects` page)
 
-6. **`package.json`** - Update author information
+6. **`lib/technology-radar-data.ts` & `lib/ai-radar-data.ts`** - Technology and AI radar entries
+   - See [RADAR.md](./RADAR.md) for detailed management guide
+   - Use `/admin/radar` in dev mode for easier editing
+
+7. **`package.json`** - Update author information
    - Change `name`, `author.name`, `author.url`, and `repository` fields
 
 ### 3. Content Setup
@@ -86,7 +90,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   ├── navigation-links.ts
 │   ├── social-data.ts
 │   ├── uses-data.ts
-│   └── projects-data.ts
+│   ├── projects-data.ts
+│   ├── radar-types.ts           # Technology radar interfaces
+│   ├── technology-radar-data.ts # Technology radar entries
+│   └── ai-radar-data.ts        # AI radar entries
 ├── public/              # Static assets (images, icons, etc.)
 └── types/               # TypeScript type definitions
 ```
@@ -280,6 +287,17 @@ Both directories are automatically regenerated when the dev server starts.
 
 ## Common Tasks
 
+### Managing Technology Radars
+
+This template includes Technology and AI Radar pages for tracking technologies and tools you're exploring or using.
+
+**See [RADAR.md](./RADAR.md) for the complete guide on:**
+
+- Using the admin interface at `/admin/radar`
+- Adding/editing radar entries
+- Customizing quadrants and rings
+- Deployment workflow
+
 ### Adding a New Page
 
 1. Create `content/pages/your-page.mdx`
@@ -327,7 +345,7 @@ import { CustomComponent } from "@/components/custom-component";
 ## Getting Help
 
 - Check the [README.md](./README.md) for detailed documentation
-- Review [existing examples](./README.md#examples)
+- Review the [RADAR.md](./RADAR.md) guide for managing technology radars
 - Open an issue on [GitHub](https://github.com/thedevdavid/digital-garden/issues)
 
 ## Next Steps

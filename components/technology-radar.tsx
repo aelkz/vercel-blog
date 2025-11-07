@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
-import { RadarConfig, RadarEntry } from "@/lib/radar-data";
+import { RadarConfig, RadarEntry } from "@/lib/radar-types";
 
 interface TechnologyRadarProps {
   config: RadarConfig;
@@ -124,24 +124,48 @@ export function TechnologyRadar({ config }: TechnologyRadarProps) {
         .text(quadrant.name);
     });
 
-    // Plot entries
+    // Plot entries with collision detection
+    const placedPositions: { x: number; y: number }[] = [];
+    const minDistance = 35; // Minimum distance between icons
+
     config.entries.forEach((entry) => {
       // Calculate position
       const quadrantIndex = entry.quadrant;
       const ringIndex = entry.ring;
 
-      // Random position within quadrant and ring
       const baseAngle = quadrantIndex * 90;
       const angleRange = 90;
-      const randomAngle = baseAngle + Math.random() * angleRange - angleRange / 2 + 45;
-      const radian = (randomAngle * Math.PI) / 180;
-
       const innerRadius = ringIndex * ringWidth;
       const outerRadius = (ringIndex + 1) * ringWidth;
-      const randomRadius = innerRadius + Math.random() * (outerRadius - innerRadius);
 
-      const x = Math.cos(radian) * randomRadius;
-      const y = Math.sin(radian) * randomRadius;
+      // Try to find a non-colliding position
+      let x: number, y: number;
+      let attempts = 0;
+      const maxAttempts = 50;
+
+      do {
+        const randomAngle = baseAngle + Math.random() * angleRange - angleRange / 2 + 45;
+        const radian = (randomAngle * Math.PI) / 180;
+        const randomRadius = innerRadius + Math.random() * (outerRadius - innerRadius);
+
+        x = Math.cos(radian) * randomRadius;
+        y = Math.sin(radian) * randomRadius;
+
+        attempts++;
+
+        // Check collision with existing positions
+        const hasCollision = placedPositions.some((pos) => {
+          const distance = Math.sqrt(Math.pow(pos.x - x, 2) + Math.pow(pos.y - y, 2));
+          return distance < minDistance;
+        });
+
+        if (!hasCollision || attempts >= maxAttempts) {
+          break;
+        }
+      } while (true);
+
+      // Store this position
+      placedPositions.push({ x, y });
 
       // Determine shape based on 'moved' status
       const shape = entry.moved !== 0 ? "triangle" : "circle";

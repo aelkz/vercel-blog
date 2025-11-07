@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
+import { aiRadar } from "@/lib/ai-radar-data";
 import { defaultAuthor } from "@/lib/metadata";
-import { aiRadar } from "@/lib/radar-data";
 import { TechnologyRadar } from "@/components/technology-radar";
 
 export async function generateMetadata(): Promise<Metadata> {
