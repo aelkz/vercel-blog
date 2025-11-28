@@ -2,7 +2,9 @@ import NextImage, { ImageProps } from "next/image";
 import Link from "next/link";
 import { useMDXComponent } from "next-contentlayer/hooks";
 
+import { CodeBlock } from "./code-block";
 import { NewsletterCTA } from "./newsletter-cta";
+import { Video } from "./video";
 import { YouTubeVideo } from "./youtube-video";
 
 function CustomLink(props: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
@@ -22,6 +24,8 @@ const components = {
   Image: (props: ImageProps) => <NextImage {...props} />,
   NewsletterCTA,
   YouTubeVideo,
+  Video,
+  code: CodeBlock,
   // a: CustomLink,
   h1: ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h1 className={`!text-[#A97125] [&_a]:!text-[#A97125] ${className || ""}`} {...props} />

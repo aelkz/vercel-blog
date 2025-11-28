@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Post } from "contentlayer/generated";
 import { format, parseISO } from "date-fns";
@@ -19,7 +20,10 @@ const PostPreview = ({ post }: PostPreviewProps) => {
           "select-rounded-md block w-full rounded-md px-4 py-2 leading-none no-underline outline-none transition-colors hover:bg-foreground/10 hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
         )}
       >
-        <h3 className="my-1 text-2xl font-bold text-foreground">{post.title}</h3>
+        <h3 className="my-1 flex items-center gap-2 text-2xl font-bold text-foreground">
+          {post.title}
+          {post.isNew && <Image src="/new.png" alt="New" width={32} height={32} className="inline-block" />}
+        </h3>
         <div className="flex gap-2 text-sm leading-snug text-muted-foreground">
           <div className="flex items-center gap-1">
             <CalendarDays size={16} />

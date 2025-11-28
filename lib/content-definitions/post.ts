@@ -44,6 +44,10 @@ export const Post = defineDocumentType(() => ({
       options: ["draft", "published"],
       required: true,
     },
+    isNew: {
+      type: "boolean",
+      default: false,
+    },
   },
   computedFields: {
     tagSlugs: {
