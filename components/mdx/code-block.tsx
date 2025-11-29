@@ -105,34 +105,8 @@ export function CodeBlock({ children, className, inline, node, ...props }: CodeB
   };
 
   return (
-    <div
-      style={{
-        background: "#f5f5f5",
-        borderRadius: "0.5rem",
-        padding: "1rem",
-        margin: "0.5rem 0",
-      }}
-    >
-      <SyntaxHighlighter
-        language={language}
-        style={customTheme}
-        PreTag="div"
-        customStyle={{
-          margin: 0,
-          background: "#f5f5f5 !important",
-          backgroundColor: "#f5f5f5 !important",
-          padding: 0,
-          borderRadius: 0,
-          border: "none",
-        }}
-        codeTagProps={{
-          style: {
-            background: "transparent !important",
-            backgroundColor: "transparent !important",
-            fontSize: "0.75rem",
-          },
-        }}
-      >
+    <div className="code-block-wrapper my-2 overflow-hidden rounded-lg bg-[#f5f5f5] p-4">
+      <SyntaxHighlighter language={language} style={customTheme} PreTag="div">
         {String(children).replace(/\n$/, "")}
       </SyntaxHighlighter>
     </div>
