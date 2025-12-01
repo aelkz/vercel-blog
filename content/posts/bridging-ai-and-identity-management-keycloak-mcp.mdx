@@ -1,7 +1,7 @@
 ---
 title: "Bridging AI and Identity Management: A Deep Dive into another Keycloak MCP"
 publishedDate: "2025-11-28"
-lastUpdatedDate: "2025-11-28"
+lastUpdatedDate: "2025-12-01"
 tags:
   - technology
   - ai
@@ -22,13 +22,12 @@ MCP servers expose specific tools that AI assistants can invoke, providing a str
 ## Introducing Another-Keycloak-MCP (AKC-MCP)
 
 Another-Keycloak-MCP is a MCP server specifically designed for Keycloak IAM.<br />
-It provides AI assistants with 45 specialized tools to manage users, groups, realms, authentication flows, and client scopes—all while maintaining strict safety controls and type validation.
+**It provides AI assistants with a bunch of specialized tools to manage users, groups, realms, authentication flows, and client scopes—all while maintaining strict safety controls and type validation.**
 
 ### Why Another Keycloak MCP?
 
 While several Keycloak MCP implementations exist, AKC-MCP stands out with:
 
-- **Comprehensive coverage**: 45 tools spanning all major Keycloak management areas
 - **Advanced search capabilities**: Multi-field search with exact/fuzzy matching, duplicate detection, and IDP link checking
 - **Production-ready safety features**: Multiple operation modes, read-only mode, and destructive operation warnings
 - **Full TypeScript implementation**: Strong typing with Zod runtime validation
@@ -252,7 +251,7 @@ src/
 
 This structure promotes maintainability, with each tool category isolated in its own module and shared utilities centralized for consistency.
 
-## The 45 Tools: A Comprehensive Toolkit
+## The MCP Toolkit
 
 AKC-MCP provides tools across five major categories:
 
@@ -428,9 +427,9 @@ graph TD
     style ReturnValidationError fill:#ff9800,color:#fff
 ```
 
-## The Entry Point: keycloak-mcp-entrypoint
+## The Entry Point: How to start with the keycloak-mcp-entrypoint wrapper
 
-While another-keycloak-mcp provides the core functionality, the keycloak-mcp-entrypoint project serves as a streamlined wrapper designed specifically for AI tool integration.
+While another-keycloak-mcp provides the core functionality, the keycloak-mcp-entrypoint project serves as a streamlined wrapper **designed specifically for AI tool integration**.
 
 ### What Does It Do?
 
@@ -439,24 +438,6 @@ The entry point is elegantly simple but crucial:
 1. **Loads Environment Configuration**: Reads `.env` file for Keycloak connection settings
 2. **Displays Startup Banner**: Shows configuration summary (to stderr to avoid interfering with MCP protocol)
 3. **Starts the MCP Server**: Imports and launches the another-keycloak-mcp server
-
-Here's the core logic:
-
-```typescript
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
-import { config } from "dotenv";
-
-// Load environment variables
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const envPath = join(__dirname, "..", ".env");
-
-config({ path: envPath });
-
-// Import and run the another-keycloak-mcp server
-await import("another-keycloak-mcp");
-```
 
 ### Why a Separate Entry Point?
 
@@ -586,7 +567,7 @@ sequenceDiagram
 
 - Node.js 18 or higher
 - Keycloak server (v26.4.5 recommended, but compatible with other versions)
-- Keycloak admin credentials or service account
+- Keycloak admin credentials or service account (recommended)
 
 ### Installation Steps
 
@@ -919,5 +900,5 @@ The combination of the Model Context Protocol's standardized interface, Keycloak
 
 **Project Links**:
 
-- another-keycloak-mcp: Core MCP server with 45 Keycloak management tools
-- keycloak-mcp-entrypoint: Streamlined entry point for AI tool integration
+- [another-keycloak-mcp](https://github.com/aelkz/another-keycloak-mcp): Core MCP server with 45 Keycloak management tools
+- [keycloak-mcp-entrypoint](https://github.com/aelkz/keycloak-mcp-entrypoint): Streamlined entry point for AI tool integration
