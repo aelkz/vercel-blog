@@ -3,7 +3,7 @@ import { AuthorType, SiteMetaData } from "@/types";
 import { socialProfiles } from "./social-data";
 
 export const BASE_URL =
-  `https://${process.env.VERCEL_URL}` ||
+  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
   process.env.NEXT_PUBLIC_BASE_URL ||
   `http://localhost:${process.env.PORT || 3000}`;
 
