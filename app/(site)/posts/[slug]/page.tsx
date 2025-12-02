@@ -58,11 +58,29 @@ export async function generateMetadata({ params }: PostProps): Promise<Metadata>
     return {};
   }
 
+  const postUrl = `${BASE_URL}/${post._raw.flattenedPath}`;
+
   return {
     title: post.title,
     description: post.description,
     authors: [{ name: post?.author?.name || defaultAuthor.name, url: defaultAuthor.website }],
     keywords: post.tags,
+    openGraph: {
+      title: post.title,
+      description: post.description,
+      url: postUrl,
+      type: "article",
+      publishedTime: post.publishedDate,
+      modifiedTime: post.lastUpdatedDate,
+      authors: [post?.author?.name || defaultAuthor.name],
+      tags: post.tags,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
+      creator: defaultAuthor.handle,
+    },
   };
 }
 
