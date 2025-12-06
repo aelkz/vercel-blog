@@ -1,9 +1,10 @@
 import { Metadata } from "next";
-import { allPosts } from "contentlayer/generated";
 
 import { defaultAuthor } from "@/lib/metadata";
 import { sortByDate } from "@/lib/utils";
 import PostPreview from "@/components/post-preview";
+
+import { allPosts } from ".contentlayer/generated";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

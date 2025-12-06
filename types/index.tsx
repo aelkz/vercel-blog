@@ -1,7 +1,8 @@
 import { LinkProps } from "next/link";
-import { Post, Series } from "contentlayer/generated";
 
 import { AnnouncementBarProps } from "@/components/announcement-bar";
+
+import { Post, Series } from ".contentlayer/generated";
 
 export interface PostHeading {
   heading: number;

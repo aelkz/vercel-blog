@@ -47,14 +47,15 @@ export function Navbar() {
                 </NavigationMenuContent>
               </>
             ) : (
-              <Link href={item.href as string} legacyBehavior passHref>
-                <NavigationMenuLink
+              <NavigationMenuLink asChild>
+                <Link
+                  href={item.href as string}
                   target={item?.href?.startsWith("http") ? "_blank" : "_self"}
                   className={navigationMenuTriggerStyle()}
                 >
                   {item.title}
-                </NavigationMenuLink>
-              </Link>
+                </Link>
+              </NavigationMenuLink>
             )}
           </NavigationMenuItem>
         ))}

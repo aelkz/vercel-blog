@@ -1,9 +1,10 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { allPosts, Post } from "contentlayer/generated";
 
 import { sortByDate } from "@/lib/utils";
 import PostPreview from "@/components/post-preview";
+
+import { allPosts, Post } from ".contentlayer/generated";
 
 // Get sorted articles from the contentlayer
 async function getSortedArticles(): Promise<Post[]> {
@@ -20,14 +21,16 @@ async function getSortedArticles(): Promise<Post[]> {
 }
 
 // Dynamic metadata for the page
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const params = await props.params;
   return {
     title: `All posts in ${params.slug}`,
     description: `All posts in ${params.slug}`,
   };
 }
 
-export default async function TagPage({ params }: { params: { slug: string } }) {
+export default async function TagPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const tag = params.slug;
 
   const posts = allPosts

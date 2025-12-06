@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { SocialProfile } from "@/types";
 import { Linkedin, Mail } from "lucide-react";
-import { siFacebook } from "simple-icons";
 
-import { Button, ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,24 +25,6 @@ export const SocialShare = ({ url, text }: SocialShareProps) => {
       <DropdownMenuContent>
         <DropdownMenuLabel>Share Post</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link
-            href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
-            rel="noreferrer noopener"
-            target="_blank"
-          >
-            <svg
-              role="img"
-              viewBox="0 0 24 24"
-              className="mr-2 h-3 w-3"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d={siFacebook.path}></path>
-            </svg>
-            Facebook
-          </Link>
-        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link
             href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`}

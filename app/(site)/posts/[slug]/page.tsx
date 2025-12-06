@@ -3,7 +3,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PostSeries, SeriesItem } from "@/types";
-import { allPosts } from "contentlayer/generated";
 import { format, parseISO } from "date-fns";
 import { Home } from "lucide-react";
 
@@ -18,10 +17,12 @@ import { ReadingProgress } from "@/components/reading-progress";
 import { SocialShare } from "@/components/social-share";
 import { TableOfContents } from "@/components/table-of-contents";
 
+import { allPosts } from ".contentlayer/generated";
+
 interface PostProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 async function getPostFromParams(params: PostProps["params"]): Promise<any> {
@@ -51,7 +52,8 @@ async function getPostFromParams(params: PostProps["params"]): Promise<any> {
   return post;
 }
 
-export async function generateMetadata({ params }: PostProps): Promise<Metadata> {
+export async function generateMetadata(props: PostProps): Promise<Metadata> {
+  const params = await props.params;
   const post = await getPostFromParams(params);
 
   if (!post) {
@@ -90,7 +92,8 @@ export async function generateStaticParams(): Promise<PostProps["params"][]> {
   }));
 }
 
-export default async function PostPage({ params }: PostProps) {
+export default async function PostPage(props: PostProps) {
+  const params = await props.params;
   const post = await getPostFromParams(params);
 
   if (!post || (process.env.NODE_ENV !== "development" && post.status !== "published")) {

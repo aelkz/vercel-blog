@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { allPosts } from "contentlayer/generated";
 import { ArrowRight } from "lucide-react";
 
 import siteMetadata, { defaultAuthor } from "@/lib/metadata";
@@ -8,6 +7,8 @@ import { HeroSimple } from "@/components/hero-simple";
 import { Sidebar } from "@/components/home-sidebar";
 import NewsletterSubscribe from "@/components/newsletter-subscribe";
 import PostPreview from "@/components/post-preview";
+
+import { allPosts } from ".contentlayer/generated";
 
 export default async function Home() {
   const posts = allPosts

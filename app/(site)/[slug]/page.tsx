@@ -1,14 +1,15 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { allPages } from "contentlayer/generated";
 import { format, parseISO } from "date-fns";
 
 import { Mdx } from "@/components/mdx";
 
+import { allPages } from ".contentlayer/generated";
+
 interface PageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 async function getPageFromParams(params: PageProps["params"]) {
@@ -21,7 +22,8 @@ async function getPageFromParams(params: PageProps["params"]) {
   return page;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params;
   const page = await getPageFromParams(params);
 
   if (!page) {
@@ -40,7 +42,8 @@ export async function generateStaticParams(): Promise<PageProps["params"][]> {
   }));
 }
 
-export default async function PagePage({ params }: PageProps) {
+export default async function PagePage(props: PageProps) {
+  const params = await props.params;
   const page = await getPageFromParams(params);
 
   if (!page || (process.env.NODE_ENV === "development" && page.status !== "published")) {

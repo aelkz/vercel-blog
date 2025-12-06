@@ -1,12 +1,11 @@
 // @ts-check
 
-const { withContentlayer } = require("next-contentlayer");
+const { withContentlayer } = require("next-contentlayer2");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
-  transpilePackages: ["next-contentlayer"],
+  transpilePackages: ["next-contentlayer2"],
   typescript: {
     ignoreBuildErrors: true,
   },

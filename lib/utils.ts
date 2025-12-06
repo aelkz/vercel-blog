@@ -1,9 +1,9 @@
 import { clsx, type ClassValue } from "clsx";
-import { Post } from "contentlayer/generated";
 import { compareDesc } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import siteMetadata from "./metadata";
+import { Post } from ".contentlayer/generated";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
